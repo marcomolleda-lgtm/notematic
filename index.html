@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 <meta name="mobile-web-app-capable" content="yes"/>
-<title>Notematic</title>
+<title>notematic</title>
 <style>
 @font-face{
   font-family:'Lora';
@@ -185,13 +185,13 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 .note-title{
   font-family:'DM Sans',sans-serif;
   font-weight:700;
-  font-size:16px;
+  font-size:17px;
   letter-spacing:normal;
   margin-bottom:8px;
   color:var(--text);
 }
 .note-preview{
-  font-size:15px;
+  font-size:16px;
   line-height:1.5;
   color:var(--text);
   white-space:pre-wrap;
@@ -234,7 +234,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   width:100%;flex-shrink:0;
   border:none;background:none;outline:none;
   font-family:'Lora',serif;
-  font-size:22px;
+  font-size:23px;
   font-weight:600;
   color:var(--text);
   margin-bottom:8px;
@@ -256,13 +256,23 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   white-space:pre-wrap;
   word-wrap:break-word;
   font-family:'DM Sans',sans-serif;
-  font-size:18px;
+  font-size:19px;
   line-height:1.75;
   color:var(--text);
   padding-bottom:160px;
 }
 #note-body-input:empty:before{content:attr(data-placeholder);color:var(--text-muted);}
 #note-body-input a{color:var(--date);text-decoration:underline;}
+#note-body-input br.p-break{
+  /* Salto de "punto y aparte" (Enter): al convertirlo en un elemento de
+     bloque de altura cero, su margin-top añade un poco de aire extra por
+     encima, además del interlineado normal — sin generar una línea en
+     blanco completa. Los saltos por ajuste de línea (final de renglón
+     dentro del mismo párrafo) no llevan esta clase y usan solo line-height. */
+  display:block;
+  content:"";
+  margin-top:10px;
+}
 #note-body-input img{
   display:block;
   width:92%;
@@ -443,14 +453,13 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 </div>
 
 <!-- ═══════ MODAL: ORIGEN DE LA IMAGEN (galería o cámara) ═══════ -->
+<!-- Sin título ni botón de cancelar: tocar fuera de la ventanita la cierra. -->
 <div class="modal-overlay hidden" id="modal-image-source">
   <div class="modal-box" style="max-width:300px;">
-    <div class="modal-title">Insertar imagen</div>
     <div id="image-source-options" style="display:flex;flex-direction:column;gap:2px;">
       <div class="menu-option" id="image-source-gallery">Galería</div>
       <div class="menu-option" id="image-source-camera">Cámara</div>
     </div>
-    <div class="modal-actions-row"><button class="modal-link-btn" id="image-source-cancel">Cancelar</button></div>
   </div>
 </div>
 
@@ -762,7 +771,6 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   var modalImageSource = document.getElementById("modal-image-source");
   var imageSourceGallery = document.getElementById("image-source-gallery");
   var imageSourceCamera = document.getElementById("image-source-camera");
-  var imageSourceCancel = document.getElementById("image-source-cancel");
   var imageInsertGallery = document.getElementById("image-insert-gallery");
   var imageInsertCamera = document.getElementById("image-insert-camera");
   var savedBodyRange = null; // dónde estaba el cursor antes de abrir la ventanita
@@ -775,11 +783,21 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     } else {
       savedBodyRange = null;
     }
+    // Se quita la selección y el foco del cuerpo de la nota para que el
+    // indicador táctil del cursor (el punto/gota azul) no se quede visible
+    // por encima de la ventanita flotante. La posición ya quedó guardada
+    // en savedBodyRange y se restaura al insertar la imagen.
+    sel.removeAllRanges();
+    bodyInput.blur();
     modalImageSource.classList.remove("hidden");
   });
 
   function closeImageSourceModal(){ modalImageSource.classList.add("hidden"); }
-  imageSourceCancel.addEventListener("click", closeImageSourceModal);
+  // Tocar fuera de la ventanita (el fondo oscurecido) la cierra, sin
+  // necesidad de un botón "Cancelar" explícito.
+  modalImageSource.addEventListener("click", function(e){
+    if(e.target === modalImageSource) closeImageSourceModal();
+  });
   imageSourceGallery.addEventListener("click", function(){
     closeImageSourceModal();
     imageInsertGallery.value = "";
@@ -900,11 +918,24 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       node.parentNode.replaceChild(frag, node);
     });
   }
-  // Tecla Enter: insertar un salto de línea de texto simple (sin crear <div>/<p> anidados)
+  // Tecla Enter: insertar un <br class="p-break"> (en vez de "\n" o crear
+  // <div>/<p> anidados) para poder darle algo más de espacio que a los
+  // saltos de línea por simple ajuste de renglón dentro del mismo párrafo.
   bodyInput.addEventListener("keydown", function(e){
     if(e.key === "Enter"){
       e.preventDefault();
-      document.execCommand("insertText", false, "\n");
+      var sel = window.getSelection();
+      if(sel && sel.rangeCount){
+        var range = sel.getRangeAt(0);
+        range.deleteContents();
+        var br = document.createElement("br");
+        br.className = "p-break";
+        range.insertNode(br);
+        range.setStartAfter(br);
+        range.setEndAfter(br);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
       // Como el salto lo insertamos nosotros (en vez del Enter nativo del
       // teclado), el navegador no hace su scroll automático de "llevar el
       // cursor a la vista" al pulsar la flecha azul. Lo replicamos a mano.
@@ -1300,7 +1331,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   // ── EXPORTAR ──
   function exportAllNotes(){
     var payload = {
-      app: "Notematic",
+      app: "notematic",
       exportedAt: new Date().toISOString(),
       folders: data.folders,
       notes: data.notes
@@ -1347,7 +1378,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
         renderList();
         alert("Importación completada.");
       }catch(err){
-        alert("El archivo no tiene un formato válido de copia de seguridad de Notematic.");
+        alert("El archivo no tiene un formato válido de copia de seguridad de notematic.");
       }
     };
     reader.readAsText(file);

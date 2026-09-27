@@ -1,6 +1,6 @@
 {
-  "name": "Notematic",
-  "short_name": "Notematic",
+  "name": "notematic",
+  "short_name": "notematic",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
