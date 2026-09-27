@@ -203,9 +203,12 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   /* Cuadrado cuyo lado coincide con la altura del bloque de vista previa +
      fecha (align-items:stretch lo estira a esa altura, y aspect-ratio hace
      que el ancho la iguale). object-fit:cover ajusta la imagen por su lado
-     más grande, recortando el otro. */
+     más grande, recortando el otro. min-width:0 es imprescindible: sin
+     él, una <img> como elemento flexible no encoge por debajo de su
+     tamaño real y se ve enorme, aunque el resto de reglas sean correctas. */
   aspect-ratio:1/1;
   height:auto;
+  min-width:0;
   object-fit:cover;
   border-radius:10px;
   flex-shrink:0;
