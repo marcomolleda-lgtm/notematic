@@ -257,19 +257,19 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   word-wrap:break-word;
   font-family:'DM Sans',sans-serif;
   font-size:19px;
-  line-height:1.75;
+  line-height:1.55;
   color:var(--text);
   padding-bottom:160px;
 }
 #note-body-input:empty:before{content:attr(data-placeholder);color:var(--text-muted);}
 #note-body-input a{color:var(--date);text-decoration:underline;}
 #note-body-input .p-break-spacer{
-  /* Espacio extra de "punto y aparte": un segundo salto de línea con
-     letra más pequeña, así ocupa una línea en blanco más corta que una
-     línea normal (en vez de intentar poner un margen sobre un <br>,
-     truco poco fiable entre navegadores). El salto normal de renglón
-     (ajuste de línea dentro del mismo párrafo) no lleva esto. */
-  font-size:7px;
+  /* Espacio extra de "punto y aparte": un bloque con altura fija en
+     píxeles (no depende del tamaño de letra ni de cómo cada navegador
+     calcule la altura de una línea vacía, así el resultado es siempre
+     el mismo). El ajuste de línea dentro del mismo párrafo no lleva esto. */
+  display:block;
+  height:10px;
 }
 #note-body-input img{
   display:block;
@@ -923,10 +923,11 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       node.parentNode.replaceChild(frag, node);
     });
   }
-  // Tecla Enter: insertar un salto de línea normal + un segundo salto
-  // "espaciador" (letra más pequeña, así la línea en blanco que genera es
-  // más corta que una línea normal) para que el punto y aparte se note
-  // algo más separado que un simple ajuste de renglón.
+  // Tecla Enter: insertar un bloque "espaciador" con una altura fija en
+  // píxeles (en vez de un <br> con letra pequeña: la altura de una línea
+  // vacía basada en el tamaño de letra de un <br> no se calcula de forma
+  // fiable en todos los navegadores). Al ser un bloque, ya separa el
+  // párrafo por sí solo — no hace falta un <br> adicional.
   bodyInput.addEventListener("keydown", function(e){
     if(e.key === "Enter"){
       e.preventDefault();
@@ -935,14 +936,10 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       if(sel && sel.rangeCount){
         var range = sel.getRangeAt(0);
         range.deleteContents();
-        var frag = document.createDocumentFragment();
-        frag.appendChild(document.createElement("br"));
-        spacer = document.createElement("span");
+        spacer = document.createElement("div");
         spacer.className = "p-break-spacer";
         spacer.setAttribute("contenteditable", "false");
-        spacer.appendChild(document.createElement("br"));
-        frag.appendChild(spacer);
-        range.insertNode(frag);
+        range.insertNode(spacer);
         range.setStartAfter(spacer);
         range.setEndAfter(spacer);
         sel.removeAllRanges();
