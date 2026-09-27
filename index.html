@@ -269,7 +269,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
      línea normal (en vez de intentar poner un margen sobre un <br>,
      truco poco fiable entre navegadores). El salto normal de renglón
      (ajuste de línea dentro del mismo párrafo) no lleva esto. */
-  font-size:11px;
+  font-size:7px;
 }
 #note-body-input img{
   display:block;
@@ -926,17 +926,18 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   // Tecla Enter: insertar un salto de línea normal + un segundo salto
   // "espaciador" (letra más pequeña, así la línea en blanco que genera es
   // más corta que una línea normal) para que el punto y aparte se note
-  // claramente más separado que un simple ajuste de renglón.
+  // algo más separado que un simple ajuste de renglón.
   bodyInput.addEventListener("keydown", function(e){
     if(e.key === "Enter"){
       e.preventDefault();
       var sel = window.getSelection();
+      var spacer = null;
       if(sel && sel.rangeCount){
         var range = sel.getRangeAt(0);
         range.deleteContents();
         var frag = document.createDocumentFragment();
         frag.appendChild(document.createElement("br"));
-        var spacer = document.createElement("span");
+        spacer = document.createElement("span");
         spacer.className = "p-break-spacer";
         spacer.setAttribute("contenteditable", "false");
         spacer.appendChild(document.createElement("br"));
@@ -949,26 +950,19 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       }
       // Como el salto lo insertamos nosotros (en vez del Enter nativo del
       // teclado), el navegador no hace su scroll automático de "llevar el
-      // cursor a la vista" al pulsar la flecha azul. Lo replicamos a mano.
+      // cursor a la vista". Lo replicamos a mano, midiendo directamente el
+      // elemento "spacer" que acabamos de insertar (en vez de la posición
+      // del cursor): justo al lado de un elemento no editable, el navegador
+      // a veces no puede calcular la posición del cursor y, si el punto y
+      // aparte se inserta en medio del texto (no al final), esto hacía que
+      // la pantalla saltara por error al final de toda la nota.
       requestAnimationFrame(function(){
-        var sel = window.getSelection();
-        var rect = null;
-        if(sel && sel.rangeCount){
-          var r = sel.getRangeAt(0).cloneRange();
-          r.collapse(true);
-          var rects = r.getClientRects();
-          if(rects.length) rect = rects[0];
-        }
+        var rect = spacer ? spacer.getBoundingClientRect() : null;
         if(rect){
           var boxRect = bodyInput.getBoundingClientRect();
           if(rect.bottom > boxRect.bottom - 4){
             bodyInput.scrollTop += (rect.bottom - boxRect.bottom) + 40;
           }
-        } else {
-          // El cursor está justo al final del texto: en ese punto exacto
-          // el navegador no puede calcular su posición, así que bajamos
-          // el scroll al máximo (el margen extra ya deja hueco de sobra).
-          bodyInput.scrollTop = bodyInput.scrollHeight;
         }
       });
     }
