@@ -263,6 +263,14 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 }
 #note-body-input:empty:before{content:attr(data-placeholder);color:var(--text-muted);}
 #note-body-input a{color:var(--date);text-decoration:underline;}
+#note-body-input img{
+  display:block;
+  width:92%;
+  max-width:92%;
+  height:auto;
+  margin:14px auto;
+  border-radius:14px;
+}
 
 #editor-toolbar{
   flex-shrink:0;
@@ -424,8 +432,10 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     <button class="fmt-btn" id="fmt-bold" aria-label="Negrita"><b>B</b></button>
     <button class="fmt-btn" id="fmt-italic" aria-label="Cursiva"><i>I</i></button>
     <button class="fmt-btn" id="fmt-underline" aria-label="Subrayado"><u>S</u></button>
+    <button class="fmt-btn" id="fmt-image" aria-label="Insertar imagen">&#128247;</button>
   </div>
 </div>
+<input type="file" id="image-insert-input" accept="image/*" style="display:none;"/>
 
 <!-- ═══════ MODAL: ELEGIR/GESTIONAR CARPETAS (uso general, desde icono carpeta) ═══════ -->
 <div class="modal-overlay hidden" id="modal-folders">
@@ -491,17 +501,48 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 
-  function loadData(){
-    var raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){
-      try{
-        var parsed = JSON.parse(raw);
-        if(!parsed.folders.some(function(f){ return f.isAll; })){
-          parsed.folders[0].isAll = true;
-        }
-        return parsed;
-      }catch(e){}
-    }
+  // ── ALMACENAMIENTO: IndexedDB (antes localStorage) ──
+  // Se guarda todo el objeto de datos bajo una única clave, igual que antes
+  // en localStorage, pero en una base de datos con mucho más espacio, para
+  // poder incrustar imágenes y audio en las notas.
+  var IDB_NAME = "NotematicDB";
+  var IDB_STORE = "kv";
+  var idbPromise = null;
+  function openIDB(){
+    if(idbPromise) return idbPromise;
+    idbPromise = new Promise(function(resolve, reject){
+      var req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = function(e){
+        var db = e.target.result;
+        if(!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+      };
+      req.onsuccess = function(e){ resolve(e.target.result); };
+      req.onerror = function(e){ reject(e.target.error); };
+    });
+    return idbPromise;
+  }
+  function idbGet(key){
+    return openIDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction(IDB_STORE, "readonly");
+        var req = tx.objectStore(IDB_STORE).get(key);
+        req.onsuccess = function(){ resolve(req.result); };
+        req.onerror = function(){ reject(req.error); };
+      });
+    });
+  }
+  function idbSet(key, value){
+    return openIDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).put(value, key);
+        tx.oncomplete = function(){ resolve(); };
+        tx.onerror = function(){ reject(tx.error); };
+      });
+    });
+  }
+
+  function defaultData(){
     var defaultFolders = [
       {id: uid(), name: "Notas", isAll: true},
       {id: uid(), name: "Carpeta 1"}
@@ -513,10 +554,39 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     };
   }
 
-  var data = loadData();
+  // Devuelve una Promise con los datos: primero mira en IndexedDB; si está
+  // vacía (primera vez tras la actualización), migra lo que hubiera en
+  // localStorage; si tampoco hay nada, crea los datos por defecto.
+  function loadData(){
+    return idbGet(STORAGE_KEY).then(function(fromDB){
+      if(fromDB){
+        if(!fromDB.folders.some(function(f){ return f.isAll; })){
+          fromDB.folders[0].isAll = true;
+        }
+        return fromDB;
+      }
+      var raw = null;
+      try{ raw = localStorage.getItem(STORAGE_KEY); }catch(e){}
+      if(raw){
+        try{
+          var parsed = JSON.parse(raw);
+          if(!parsed.folders.some(function(f){ return f.isAll; })){
+            parsed.folders[0].isAll = true;
+          }
+          return idbSet(STORAGE_KEY, parsed).then(function(){ return parsed; });
+        }catch(e){}
+      }
+      var fresh = defaultData();
+      return idbSet(STORAGE_KEY, fresh).then(function(){ return fresh; });
+    });
+  }
+
+  var data; // se asigna de forma asíncrona antes del primer renderList()
 
   function saveData(){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    idbSet(STORAGE_KEY, data).catch(function(e){
+      console.error("Error guardando en IndexedDB", e);
+    });
   }
 
   function getFolder(id){
@@ -666,6 +736,56 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   fmtBoldBtn.addEventListener("click", function(){ document.execCommand("bold", false, null); updateToolbarState(); });
   fmtItalicBtn.addEventListener("click", function(){ document.execCommand("italic", false, null); updateToolbarState(); });
   fmtUnderlineBtn.addEventListener("click", function(){ document.execCommand("underline", false, null); updateToolbarState(); });
+
+  // ── INSERTAR IMAGEN EN EL CUERPO DE LA NOTA ──
+  var fmtImageBtn = document.getElementById("fmt-image");
+  var imageInsertInput = document.getElementById("image-insert-input");
+  var savedBodyRange = null; // dónde estaba el cursor antes de abrir la galería
+
+  fmtImageBtn.addEventListener("pointerdown", function(e){ e.preventDefault(); });
+  fmtImageBtn.addEventListener("click", function(){
+    var sel = window.getSelection();
+    if(sel && sel.rangeCount && bodyInput.contains(sel.anchorNode)){
+      savedBodyRange = sel.getRangeAt(0).cloneRange();
+    } else {
+      savedBodyRange = null;
+    }
+    imageInsertInput.value = "";
+    imageInsertInput.click();
+  });
+
+  imageInsertInput.addEventListener("change", function(){
+    var file = imageInsertInput.files && imageInsertInput.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      bodyInput.focus();
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      if(savedBodyRange){
+        sel.addRange(savedBodyRange);
+      } else {
+        var r = document.createRange();
+        r.selectNodeContents(bodyInput);
+        r.collapse(false);
+        sel.addRange(r);
+      }
+      var img = document.createElement("img");
+      img.src = reader.result;
+      var range = sel.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(img);
+      // Deja el cursor justo después de la imagen insertada
+      range.setStartAfter(img);
+      range.setEndAfter(img);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    };
+    reader.onerror = function(){
+      alert("No se pudo leer la imagen. Prueba con otra.");
+    };
+    reader.readAsDataURL(file);
+  });
 
   // ── AUTO-ENLACE DE URLS Y CORREOS ──
   var LINK_RE = /((?:https?:\/\/|www\.)[^\s<]+[^\s<.,;:!?)\]]|[\w.+-]+@[\w-]+\.[\w.-]+)/g;
@@ -823,7 +943,9 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   }
 
   function hasContent(){
-    return !!(titleInput.textContent.trim() || getBodyText().trim());
+    // getBodyText() (innerText) no cuenta una imagen como contenido, así que
+    // se comprueba también si hay alguna <img> en el cuerpo.
+    return !!(titleInput.textContent.trim() || getBodyText().trim() || bodyInput.querySelector("img"));
   }
 
   function closeEditorToList(){
@@ -1299,7 +1421,13 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   })();
 
   // ── INICIO ──
-  renderList();
+  loadData().then(function(loaded){
+    data = loaded;
+    renderList();
+  }).catch(function(e){
+    console.error("Error cargando los datos guardados", e);
+    alert("No se pudieron cargar tus notas guardadas. Prueba a recargar la app.");
+  });
 })();
 </script>
 </body>
