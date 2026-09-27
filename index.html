@@ -190,6 +190,26 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   margin-bottom:8px;
   color:var(--text);
 }
+.note-body-row{
+  display:flex;
+  align-items:stretch;
+  gap:12px;
+}
+.note-text-col{
+  flex:1;
+  min-width:0;
+}
+.note-thumb{
+  /* Cuadrado cuyo lado coincide con la altura del bloque de vista previa +
+     fecha (align-items:stretch lo estira a esa altura, y aspect-ratio hace
+     que el ancho la iguale). object-fit:cover ajusta la imagen por su lado
+     más grande, recortando el otro. */
+  aspect-ratio:1/1;
+  height:auto;
+  object-fit:cover;
+  border-radius:10px;
+  flex-shrink:0;
+}
 .note-preview{
   font-size:16px;
   line-height:1.5;
@@ -688,10 +708,17 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       } else {
         previewHtml = escapeHtml(flatPreview);
       }
+      var thumbMatch = note.bodyHtml ? note.bodyHtml.match(/<img[^>]+src="([^"]+)"/i) : null;
+      var thumbHtml = thumbMatch ? '<img class="note-thumb" src="' + thumbMatch[1] + '" alt=""/>' : "";
       card.innerHTML =
         '<div class="note-title">' + escapeHtml(title) + '</div>' +
-        '<div class="note-preview">' + previewHtml + '</div>' +
-        '<div class="note-date">' + formatDate(note.updatedAt) + '</div>';
+        '<div class="note-body-row">' +
+          '<div class="note-text-col">' +
+            '<div class="note-preview">' + previewHtml + '</div>' +
+            '<div class="note-date">' + formatDate(note.updatedAt) + '</div>' +
+          '</div>' +
+          thumbHtml +
+        '</div>';
       card.addEventListener("click", function(){
         if(window.__onlyNotesSuppressClick) return;
         openEditor(note.id);
