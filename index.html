@@ -265,13 +265,13 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 #note-body-input a{color:var(--date);text-decoration:underline;}
 #note-body-input br.p-break{
   /* Salto de "punto y aparte" (Enter): al convertirlo en un elemento de
-     bloque de altura cero, su margin-top añade un poco de aire extra por
-     encima, además del interlineado normal — sin generar una línea en
-     blanco completa. Los saltos por ajuste de línea (final de renglón
-     dentro del mismo párrafo) no llevan esta clase y usan solo line-height. */
+     bloque de altura cero, su margin-top añade aire extra por encima,
+     además del interlineado normal — sin generar una línea en blanco
+     completa. Los saltos por ajuste de línea (final de renglón dentro
+     del mismo párrafo) no llevan esta clase y usan solo line-height. */
   display:block;
   content:"";
-  margin-top:10px;
+  margin-top:28px;
 }
 #note-body-input img{
   display:block;
@@ -323,6 +323,13 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   padding:26px 24px;
   max-height:80vh;
   display:flex;flex-direction:column;
+}
+#modal-image-source .modal-box{
+  width:150px;max-width:150px;
+  padding:20px 14px;
+}
+#modal-image-source .menu-option{
+  text-align:center;
 }
 .modal-title{
   font-family:'Lora',serif;
@@ -455,7 +462,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 <!-- ═══════ MODAL: ORIGEN DE LA IMAGEN (galería o cámara) ═══════ -->
 <!-- Sin título ni botón de cancelar: tocar fuera de la ventanita la cierra. -->
 <div class="modal-overlay hidden" id="modal-image-source">
-  <div class="modal-box" style="max-width:300px;">
+  <div class="modal-box">
     <div id="image-source-options" style="display:flex;flex-direction:column;gap:2px;">
       <div class="menu-option" id="image-source-gallery">Galería</div>
       <div class="menu-option" id="image-source-camera">Cámara</div>
