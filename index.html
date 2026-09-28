@@ -399,6 +399,13 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   font-weight:600;
 }
 .folder-chip .chip-name{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.move-chips{
+  flex-direction:column;flex-wrap:nowrap;align-items:stretch;
+  gap:8px;margin-bottom:16px;
+}
+.move-chips .folder-chip{justify-content:flex-start;flex-shrink:0;}
+.move-chips .chip-name{max-width:none;}
+#btn-menu-editor{margin-right:8px;}
 .chip-action{
   font-size:12px;color:var(--text-muted);
   padding:2px 4px;
@@ -440,7 +447,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   <div id="topbar">
     <div id="folder-tab-back"></div>
     <div id="folder-tab">
-      <span id="folder-name">Notas</span>
+      <span id="folder-name">Todas</span>
       <span id="folder-count">0</span>
     </div>
     <div id="topbar-actions">
@@ -516,6 +523,19 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     <div class="modal-actions-row">
       <button class="modal-link-btn" id="save-pick-discard">Descartar</button>
       <button class="modal-link-btn" id="save-pick-direct" style="font-weight:700;">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL: MOVER NOTA A UNA CARPETA (desde el menú de la N del editor) ═══════ -->
+<!-- Sin botones: tocar una carpeta guarda y sale; tocar fuera cancela. -->
+<div class="modal-overlay hidden" id="modal-move">
+  <div class="modal-box">
+    <div class="modal-title">Carpetas</div>
+    <div class="folder-chips move-chips" id="move-chips"></div>
+    <div class="new-folder-row" style="margin-bottom:0;">
+      <input class="new-folder-input" id="move-new-input" type="text" placeholder="Nueva carpeta..."/>
+      <button class="new-folder-add" id="move-new-add">Crear</button>
     </div>
   </div>
 </div>
@@ -597,7 +617,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 
   function defaultData(){
     var defaultFolders = [
-      {id: uid(), name: "Notas", isAll: true},
+      {id: uid(), name: "Todas", isAll: true},
       {id: uid(), name: "Carpeta 1"}
     ];
     return {
@@ -616,6 +636,13 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
         if(!fromDB.folders.some(function(f){ return f.isAll; })){
           fromDB.folders[0].isAll = true;
         }
+        // La carpeta especial que agrupa todas las notas pasa de llamarse
+        // "Notas" a "Todas" (solo si conserva el nombre original).
+        var renamed = false;
+        fromDB.folders.forEach(function(f){
+          if(f.isAll && f.name === "Notas"){ f.name = "Todas"; renamed = true; }
+        });
+        if(renamed) idbSet(STORAGE_KEY, fromDB);
         return fromDB;
       }
       var raw = null;
@@ -626,6 +653,9 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
           if(!parsed.folders.some(function(f){ return f.isAll; })){
             parsed.folders[0].isAll = true;
           }
+          parsed.folders.forEach(function(f){
+            if(f.isAll && f.name === "Notas") f.name = "Todas";
+          });
           return idbSet(STORAGE_KEY, parsed).then(function(){ return parsed; });
         }catch(e){}
       }
@@ -1089,7 +1119,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     renderList();
   }
 
-  function commitSave(folderId){
+  function commitSave(folderId, showFolder){
     var now = Date.now();
     var bodyText = getBodyText();
     var bodyHtml = getBodyHTML();
@@ -1113,21 +1143,67 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       data.notes.push(newNote);
       editingNoteId = newNote.id;
     }
+    // Con "Mover a...", tras guardar se abre la lista de la carpeta elegida;
+    // con Guardar normal se vuelve a la lista donde estábamos.
+    if(showFolder) data.currentFolderId = folderId;
     saveData();
     closeEditorToList();
   }
 
   // ── GUARDAR Y SALIR ──
   // Guardar (desde el menú de la N o desde el aviso de salida): sin elegir
-  // carpeta. Una nota existente se queda en su carpeta; una nueva va a
-  // "Notas". Después se vuelve a la lista de la carpeta donde estábamos.
+  // carpeta. Una nota existente se queda en su carpeta; una nota nueva se
+  // guarda en la carpeta en la que se está creando. Después se vuelve a la
+  // lista donde estábamos.
   function saveDirect(){
     if(!hasContent()){
       closeEditorToList();
       return;
     }
-    commitSave(editingNoteId ? originalFolderId : getAllFolder().id);
+    commitSave(editingNoteId ? originalFolderId : editingFolderId);
   }
+
+  // ── MOVER A... (carpetas: "Todas" primero y el resto en orden alfabético) ──
+  var modalMove = document.getElementById("modal-move");
+  var moveChips = document.getElementById("move-chips");
+  var moveNewInput = document.getElementById("move-new-input");
+
+  function renderMoveChips(){
+    moveChips.innerHTML = "";
+    var others = data.folders.filter(function(f){ return !f.isAll; }).sort(function(a, b){
+      return a.name.localeCompare(b.name, "es", {sensitivity:"base"});
+    });
+    [getAllFolder()].concat(others).forEach(function(f){
+      var chip = document.createElement("div");
+      chip.className = "folder-chip" + (f.id === editingFolderId ? " active" : "");
+      chip.innerHTML = '<span class="chip-name">' + escapeHtml(f.name) + '</span>';
+      chip.addEventListener("click", function(){
+        modalMove.classList.add("hidden");
+        if(!hasContent()){ closeEditorToList(); return; }
+        commitSave(f.id, true);
+      });
+      moveChips.appendChild(chip);
+    });
+  }
+  function openMovePick(){
+    moveNewInput.value = "";
+    renderMoveChips();
+    modalMove.classList.remove("hidden");
+  }
+  modalMove.addEventListener("click", function(e){
+    if(e.target === modalMove) modalMove.classList.add("hidden");
+  });
+  document.getElementById("move-new-add").addEventListener("click", function(){
+    var name = moveNewInput.value.trim();
+    if(!name) return;
+    data.folders.push({id: uid(), name: name});
+    saveData();
+    moveNewInput.value = "";
+    renderMoveChips();
+  });
+  moveNewInput.addEventListener("keydown", function(e){
+    if(e.key === "Enter"){ document.getElementById("move-new-add").click(); }
+  });
 
   var modalSavePick = document.getElementById("modal-save-pick");
   modalSavePick.addEventListener("click", function(e){
@@ -1296,11 +1372,11 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       addMenuOption("Importar nota (.txt / .md)", function(){ document.getElementById("import-note-input").click(); });
     } else {
       addMenuOption("Guardar", saveDirect);
-      addMenuOption("Cancelar", closeEditorToList);
-      addMenuOption("Compartir nota", shareCurrentNote);
-      addMenuOption("Exportar esta nota", exportCurrentNote);
-      addMenuOption("Duplicar nota", duplicateCurrentNote);
-      addMenuOption("Eliminar nota", deleteCurrentNote, true);
+      addMenuOption("Mover a...", openMovePick);
+      addMenuOption("No guardar cambios", closeEditorToList);
+      addMenuOption("Compartir", shareCurrentNote);
+      addMenuOption("Exportar", exportCurrentNote);
+      addMenuOption("Eliminar", deleteCurrentNote, true);
     }
     modalMenu.classList.remove("hidden");
   }
