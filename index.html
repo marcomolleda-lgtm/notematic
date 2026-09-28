@@ -407,6 +407,46 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 .move-chips .folder-chip{justify-content:flex-start;flex-shrink:0;}
 .move-chips .chip-name{max-width:none;}
 #btn-menu-editor{margin-right:8px;}
+/* ── Reproductor de audio dentro de la nota ── */
+#note-body-input .audio-clip{
+  display:flex;align-items:center;gap:12px;
+  width:92%;height:54px;margin:14px auto;padding:0 14px;box-sizing:border-box;
+  border-radius:14px;background:rgba(38,88,161,.09);
+  user-select:none;-webkit-user-select:none;
+}
+.audio-play{
+  position:relative;flex-shrink:0;width:36px;height:36px;
+  border-radius:50%;background:var(--brand);border:none;padding:0;
+}
+.audio-play::before{
+  content:"";position:absolute;left:50%;top:50%;margin:-7px 0 0 -4px;
+  border-style:solid;border-width:7px 0 7px 12px;
+  border-color:transparent transparent transparent #fff;
+}
+.audio-clip.playing .audio-play::before{
+  border:none;width:12px;height:14px;margin:-7px 0 0 -6px;
+  background:linear-gradient(90deg,#fff 0 4px,transparent 4px 8px,#fff 8px 12px);
+}
+.audio-bar{flex:1;height:4px;border-radius:2px;background:rgba(38,88,161,.22);overflow:hidden;}
+.audio-fill{height:100%;width:0;background:var(--brand);}
+.audio-time{min-width:38px;text-align:right;font-size:14px;color:var(--brand);font-variant-numeric:tabular-nums;}
+.audio-time::before{content:attr(data-t);} /* el tiempo va como contenido generado: no se cuela en el texto de la nota */
+/* ── Ventana de grabación ── */
+#modal-record .modal-box{width:230px;max-width:230px;align-items:center;padding:24px 20px;}
+.record-row{
+  display:flex;align-items:center;gap:10px;margin-bottom:20px;
+  font-size:24px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums;
+}
+.record-dot{width:12px;height:12px;border-radius:50%;background:#d64545;animation:recpulse 1s infinite;}
+@keyframes recpulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+.record-actions{display:flex;gap:24px;}
+.record-btn{
+  width:54px;height:54px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+}
+#record-cancel{background:#eceae4;color:var(--text-muted);}
+#record-stop{background:var(--brand);}
+#record-stop::before{content:"";width:16px;height:16px;background:#fff;border-radius:3px;}
 #folder-chips .chip-name{flex:1;}
 #folder-chips .chip-action{font-size:16px;padding:4px 8px;}
 .chip-action{
@@ -488,6 +528,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     <button class="fmt-btn" id="fmt-italic" aria-label="Cursiva"><i>I</i></button>
     <button class="fmt-btn" id="fmt-underline" aria-label="Subrayado"><u>S</u></button>
     <button class="fmt-btn" id="fmt-image" aria-label="Insertar imagen">&#128247;</button>
+    <button class="fmt-btn" id="fmt-audio" aria-label="Grabar audio">&#127908;</button>
   </div>
 </div>
 
@@ -498,6 +539,18 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     <div id="image-source-options" style="display:flex;flex-direction:column;gap:2px;">
       <div class="menu-option" id="image-source-gallery">Galería</div>
       <div class="menu-option" id="image-source-camera">Cámara</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL: GRABANDO AUDIO ═══════ -->
+<!-- Tocar fuera NO cierra (para no perder una grabación por error). -->
+<div class="modal-overlay hidden" id="modal-record">
+  <div class="modal-box">
+    <div class="record-row"><span class="record-dot"></span><span id="record-time">0:00</span></div>
+    <div class="record-actions">
+      <button type="button" class="record-btn" id="record-cancel" aria-label="Descartar grabación">&#10005;</button>
+      <button type="button" class="record-btn" id="record-stop" aria-label="Terminar grabación"></button>
     </div>
   </div>
 </div>
@@ -581,14 +634,17 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   // poder incrustar imágenes y audio en las notas.
   var IDB_NAME = "NotematicDB";
   var IDB_STORE = "kv";
+  var AUDIO_STORE = "audio";
   var idbPromise = null;
   function openIDB(){
     if(idbPromise) return idbPromise;
     idbPromise = new Promise(function(resolve, reject){
-      var req = indexedDB.open(IDB_NAME, 1);
+      var req = indexedDB.open(IDB_NAME, 2);
       req.onupgradeneeded = function(e){
         var db = e.target.result;
         if(!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+        // v2: las grabaciones de voz se guardan como archivos independientes
+        if(!db.objectStoreNames.contains(AUDIO_STORE)) db.createObjectStore(AUDIO_STORE);
       };
       req.onsuccess = function(e){ resolve(e.target.result); };
       req.onerror = function(e){ reject(e.target.error); };
@@ -610,6 +666,46 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       return new Promise(function(resolve, reject){
         var tx = db.transaction(IDB_STORE, "readwrite");
         tx.objectStore(IDB_STORE).put(value, key);
+        tx.oncomplete = function(){ resolve(); };
+        tx.onerror = function(){ reject(tx.error); };
+      });
+    });
+  }
+
+  // Operaciones genéricas sobre cualquier almacén (usadas para el audio)
+  function idbStoreGet(store, key){
+    return openIDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var req = db.transaction(store, "readonly").objectStore(store).get(key);
+        req.onsuccess = function(){ resolve(req.result); };
+        req.onerror = function(){ reject(req.error); };
+      });
+    });
+  }
+  function idbStorePut(store, key, value){
+    return openIDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction(store, "readwrite");
+        tx.objectStore(store).put(value, key);
+        tx.oncomplete = function(){ resolve(); };
+        tx.onerror = function(){ reject(tx.error); };
+      });
+    });
+  }
+  function idbStoreKeys(store){
+    return openIDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var req = db.transaction(store, "readonly").objectStore(store).getAllKeys();
+        req.onsuccess = function(){ resolve(req.result); };
+        req.onerror = function(){ reject(req.error); };
+      });
+    });
+  }
+  function idbStoreDelete(store, key){
+    return openIDB().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction(store, "readwrite");
+        tx.objectStore(store).delete(key);
         tx.oncomplete = function(){ resolve(); };
         tx.onerror = function(){ reject(tx.error); };
       });
@@ -784,7 +880,15 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   var bodyInput = document.getElementById("note-body-input");
 
   function getBodyHTML(){
-    return bodyInput.innerHTML;
+    // Los reproductores de audio se dibujan por JavaScript al abrir la nota:
+    // en el HTML guardado solo se conserva el marcador vacío (id y duración).
+    if(!bodyInput.querySelector(".audio-clip")) return bodyInput.innerHTML;
+    var clone = bodyInput.cloneNode(true);
+    clone.querySelectorAll(".audio-clip").forEach(function(el){
+      el.innerHTML = "";
+      el.className = "audio-clip";
+    });
+    return clone.innerHTML;
   }
 
   // ── BARRA DE FORMATO (negrita/cursiva/subrayado) ──
@@ -933,6 +1037,185 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     insertImageFile(imageInsertCamera.files && imageInsertCamera.files[0]);
   });
 
+  // ── AUDIO: GRABAR Y REPRODUCIR DENTRO DE LA NOTA ──
+  // Cada grabación se guarda como archivo independiente en IndexedDB
+  // (almacén "audio", con su propio id); en el cuerpo de la nota solo queda
+  // un marcador <div class="audio-clip" data-audio-id=".." data-duration="..">
+  // que se convierte en reproductor al abrir la nota. Así, más adelante, la
+  // transcripción a texto podrá colgarse del mismo id sin tocar el audio.
+  var fmtAudioBtn = document.getElementById("fmt-audio");
+  var modalRecord = document.getElementById("modal-record");
+  var recordTimeEl = document.getElementById("record-time");
+  var recordingActive = false;
+  var rec = {recorder:null, stream:null, chunks:[], startedAt:0, timer:null, discard:false, range:null};
+
+  function formatTime(sec){
+    sec = Math.max(0, Math.round(sec || 0));
+    return Math.floor(sec / 60) + ":" + ("0" + (sec % 60)).slice(-2);
+  }
+
+  function buildAudioClip(el){
+    var dur = parseFloat(el.getAttribute("data-duration")) || 0;
+    el.className = "audio-clip";
+    el.setAttribute("contenteditable", "false");
+    el.innerHTML =
+      '<button type="button" class="audio-play" aria-label="Reproducir"></button>' +
+      '<div class="audio-bar"><div class="audio-fill"></div></div>' +
+      '<span class="audio-time" data-t="' + formatTime(dur) + '"></span>';
+  }
+  function hydrateAudioClips(root){
+    var clips = root.querySelectorAll(".audio-clip");
+    for(var i = 0; i < clips.length; i++) buildAudioClip(clips[i]);
+  }
+
+  // Reproducción (una sola grabación a la vez)
+  var player = {audio:null, clip:null, url:null};
+  function resetClipUI(clip){
+    if(!clip) return;
+    clip.classList.remove("playing");
+    var fill = clip.querySelector(".audio-fill");
+    if(fill) fill.style.width = "0%";
+    var t = clip.querySelector(".audio-time");
+    if(t) t.setAttribute("data-t", formatTime(parseFloat(clip.getAttribute("data-duration")) || 0));
+  }
+  function stopAudioPlayback(){
+    if(player.audio){ try{ player.audio.pause(); }catch(e){} }
+    if(player.url) URL.revokeObjectURL(player.url);
+    resetClipUI(player.clip);
+    player.audio = null; player.clip = null; player.url = null;
+  }
+  function toggleClip(clip){
+    if(player.clip === clip && player.audio){
+      if(player.audio.paused){ player.audio.play(); clip.classList.add("playing"); }
+      else { player.audio.pause(); clip.classList.remove("playing"); }
+      return;
+    }
+    stopAudioPlayback();
+    var id = clip.getAttribute("data-audio-id");
+    var dur = parseFloat(clip.getAttribute("data-duration")) || 0;
+    idbStoreGet(AUDIO_STORE, id).then(function(record){
+      if(!record){ alert("No se encontró esta grabación."); return; }
+      var url = URL.createObjectURL(record.blob);
+      var audio = new Audio(url);
+      player.audio = audio; player.clip = clip; player.url = url;
+      audio.addEventListener("timeupdate", function(){
+        if(player.audio !== audio) return;
+        var total = dur || (isFinite(audio.duration) ? audio.duration : 0);
+        var fill = clip.querySelector(".audio-fill");
+        var t = clip.querySelector(".audio-time");
+        if(fill && total > 0) fill.style.width = Math.min(100, audio.currentTime / total * 100) + "%";
+        if(t) t.setAttribute("data-t", formatTime(audio.currentTime));
+      });
+      audio.addEventListener("ended", function(){ if(player.audio === audio) stopAudioPlayback(); });
+      clip.classList.add("playing");
+      audio.play().catch(function(){ stopAudioPlayback(); });
+    }).catch(function(){ alert("No se pudo reproducir la grabación."); });
+  }
+  bodyInput.addEventListener("click", function(e){
+    var btn = e.target.closest ? e.target.closest(".audio-play") : null;
+    if(!btn) return;
+    e.preventDefault();
+    toggleClip(btn.closest(".audio-clip"));
+  });
+
+  // Grabación
+  function pickAudioMime(){
+    var list = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
+    for(var i = 0; i < list.length; i++){
+      if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(list[i])) return list[i];
+    }
+    return "";
+  }
+  function endRecordingCleanup(){
+    clearInterval(rec.timer);
+    if(rec.stream) rec.stream.getTracks().forEach(function(t){ t.stop(); });
+    recordingActive = false;
+    modalRecord.classList.add("hidden");
+  }
+  function insertAudioClip(id, duration){
+    var clip = document.createElement("div");
+    clip.setAttribute("data-audio-id", id);
+    clip.setAttribute("data-duration", String(Math.round(duration * 10) / 10));
+    buildAudioClip(clip);
+    bodyInput.focus();
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    if(rec.range){
+      sel.addRange(rec.range);
+    } else {
+      var r = document.createRange();
+      r.selectNodeContents(bodyInput);
+      r.collapse(false);
+      sel.addRange(r);
+    }
+    var range = sel.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(clip);
+    // Si el reproductor queda al final de la nota, se añade una línea
+    // detrás para poder seguir escribiendo.
+    if(!clip.nextSibling){
+      clip.parentNode.appendChild(document.createElement("br"));
+    }
+    range.setStartAfter(clip);
+    range.setEndAfter(clip);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  function finishRecording(){
+    var discard = rec.discard;
+    var mime = (rec.recorder && rec.recorder.mimeType) || "audio/webm";
+    var duration = (Date.now() - rec.startedAt) / 1000;
+    var chunks = rec.chunks;
+    endRecordingCleanup();
+    if(discard || !chunks.length) return;
+    var blob = new Blob(chunks, {type: mime});
+    var id = uid();
+    idbStorePut(AUDIO_STORE, id, {id: id, blob: blob, mime: mime, duration: duration, createdAt: Date.now()})
+      .then(function(){ insertAudioClip(id, duration); })
+      .catch(function(){ alert("No se pudo guardar la grabación."); });
+  }
+  fmtAudioBtn.addEventListener("pointerdown", function(e){ e.preventDefault(); });
+  fmtAudioBtn.addEventListener("click", function(){
+    if(recordingActive) return;
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){
+      alert("Este navegador no permite grabar audio.");
+      return;
+    }
+    var sel = window.getSelection();
+    rec.range = (sel && sel.rangeCount && bodyInput.contains(sel.anchorNode)) ? sel.getRangeAt(0).cloneRange() : null;
+    navigator.mediaDevices.getUserMedia({audio: true}).then(function(stream){
+      var mime = pickAudioMime();
+      var opts = {audioBitsPerSecond: 32000};
+      if(mime) opts.mimeType = mime;
+      var recorder;
+      try{ recorder = new MediaRecorder(stream, opts); }
+      catch(err){ recorder = new MediaRecorder(stream); }
+      rec.recorder = recorder; rec.stream = stream; rec.chunks = []; rec.discard = false;
+      recorder.ondataavailable = function(ev){ if(ev.data && ev.data.size) rec.chunks.push(ev.data); };
+      recorder.onstop = finishRecording;
+      // Se quita el cursor para que su indicador no quede sobre la ventana
+      window.getSelection().removeAllRanges();
+      bodyInput.blur();
+      recorder.start();
+      rec.startedAt = Date.now();
+      recordingActive = true;
+      recordTimeEl.textContent = "0:00";
+      rec.timer = setInterval(function(){
+        recordTimeEl.textContent = formatTime((Date.now() - rec.startedAt) / 1000);
+      }, 250);
+      modalRecord.classList.remove("hidden");
+    }).catch(function(){
+      alert("No se pudo acceder al micrófono. Revisa el permiso del navegador.");
+    });
+  });
+  document.getElementById("record-stop").addEventListener("click", function(){
+    if(rec.recorder && rec.recorder.state !== "inactive") rec.recorder.stop();
+  });
+  document.getElementById("record-cancel").addEventListener("click", function(){
+    rec.discard = true;
+    if(rec.recorder && rec.recorder.state !== "inactive") rec.recorder.stop();
+  });
+
   // ── AUTO-ENLACE DE URLS Y CORREOS ──
   var LINK_RE = /((?:https?:\/\/|www\.)[^\s<]+[^\s<.,;:!?)\]]|[\w.+-]+@[\w-]+\.[\w.-]+)/g;
   function linkifyHtml(escapedText){
@@ -1060,6 +1343,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   var originalBodyHtml = "";
 
   function openEditor(noteId){
+    stopAudioPlayback();
     editingNoteId = noteId || null;
     var note = noteId ? data.notes.find(function(n){ return n.id === noteId; }) : null;
 
@@ -1069,6 +1353,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
         // Nota ya guardada con formato (negrita/cursiva/subrayado): se
         // restaura el HTML tal cual, tal y como se guardó.
         bodyInput.innerHTML = note.bodyHtml;
+        hydrateAudioClips(bodyInput);
       } else {
         setBodyText(note.body || "");
       }
@@ -1078,7 +1363,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       originalFolderId = note.folderId;
       originalTitle = note.title || "";
       originalBody = note.body || "";
-      originalBodyHtml = bodyInput.innerHTML;
+      originalBodyHtml = getBodyHTML();
     } else {
       titleInput.textContent = "";
       setBodyText("");
@@ -1106,10 +1391,11 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   function hasContent(){
     // getBodyText() (innerText) no cuenta una imagen como contenido, así que
     // se comprueba también si hay alguna <img> en el cuerpo.
-    return !!(titleInput.textContent.trim() || getBodyText().trim() || bodyInput.querySelector("img"));
+    return !!(titleInput.textContent.trim() || getBodyText().trim() || bodyInput.querySelector("img") || bodyInput.querySelector(".audio-clip"));
   }
 
   function closeEditorToList(){
+    stopAudioPlayback();
     if(editorHistoryPushed){
       editorHistoryPushed = false;
       ignoreNextPop = true;
@@ -1226,7 +1512,8 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   // Salir con la flecha o con el gesto/botón de retroceso del móvil: si hay
   // cambios, aviso para guardar; si no, se sale directamente.
   function requestExit(){
-    var changed = titleInput.textContent !== originalTitle || getBodyText() !== originalBody || bodyInput.innerHTML !== originalBodyHtml;
+    if(recordingActive) return; // no salir de la nota mientras se graba
+    var changed = titleInput.textContent !== originalTitle || getBodyText() !== originalBody || getBodyHTML() !== originalBodyHtml;
     if(changed && hasContent()){
       modalSavePick.classList.remove("hidden");
     } else {
@@ -1428,14 +1715,45 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   });
 
   // ── EXPORTAR ──
+  function blobToDataURL(blob){
+    return new Promise(function(resolve, reject){
+      var r = new FileReader();
+      r.onload = function(){ resolve(r.result); };
+      r.onerror = function(){ reject(r.error); };
+      r.readAsDataURL(blob);
+    });
+  }
+  // Ids de las grabaciones que las notas guardadas tienen en su HTML
+  function referencedAudioIds(){
+    var ids = {};
+    data.notes.forEach(function(n){
+      var re = /data-audio-id="([^"]+)"/g, m;
+      var html = n.bodyHtml || "";
+      while((m = re.exec(html))) ids[m[1]] = true;
+    });
+    return ids;
+  }
   function exportAllNotes(){
-    var payload = {
-      app: "notematic",
-      exportedAt: new Date().toISOString(),
-      folders: data.folders,
-      notes: data.notes
-    };
-    downloadFile("only-notes-copia-seguridad.json", JSON.stringify(payload, null, 2), "application/json");
+    var ids = Object.keys(referencedAudioIds());
+    Promise.all(ids.map(function(id){
+      return idbStoreGet(AUDIO_STORE, id).then(function(record){
+        if(!record) return null;
+        return blobToDataURL(record.blob).then(function(dataUrl){
+          return {id: record.id, mime: record.mime, duration: record.duration, createdAt: record.createdAt, data: dataUrl};
+        });
+      });
+    })).then(function(list){
+      var payload = {
+        app: "notematic",
+        exportedAt: new Date().toISOString(),
+        folders: data.folders,
+        notes: data.notes,
+        audios: list.filter(Boolean)
+      };
+      downloadFile("only-notes-copia-seguridad.json", JSON.stringify(payload, null, 2), "application/json");
+    }).catch(function(){
+      alert("No se pudo preparar la copia de seguridad.");
+    });
   }
   function exportCurrentNote(){
     if(!editingNoteId){ alert("Guarda la nota antes de exportarla."); return; }
@@ -1475,7 +1793,16 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
         });
         saveData();
         renderList();
-        alert("Importación completada.");
+        var audios = Array.isArray(parsed.audios) ? parsed.audios : [];
+        Promise.all(audios.map(function(a){
+          return fetch(a.data).then(function(r){ return r.blob(); }).then(function(blob){
+            return idbStorePut(AUDIO_STORE, a.id, {id: a.id, blob: blob, mime: a.mime, duration: a.duration, createdAt: a.createdAt || Date.now()});
+          });
+        })).then(function(){
+          alert("Importación completada.");
+        }).catch(function(){
+          alert("Importación completada, pero alguna grabación de voz no se pudo restaurar.");
+        });
       }catch(err){
         alert("El archivo no tiene un formato válido de copia de seguridad de notematic.");
       }
@@ -1601,6 +1928,15 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   loadData().then(function(loaded){
     data = loaded;
     renderList();
+    // Borra grabaciones que ya no usa ninguna nota (p. ej. de notas eliminadas
+    // o de grabaciones que se quitaron sin guardar). Solo si no hay una nota abierta.
+    setTimeout(function(){
+      if(!screenEditor.classList.contains("hidden")) return;
+      var used = referencedAudioIds();
+      idbStoreKeys(AUDIO_STORE).then(function(keys){
+        keys.forEach(function(k){ if(!used[k]) idbStoreDelete(AUDIO_STORE, k); });
+      }).catch(function(){});
+    }, 3000);
   }).catch(function(e){
     console.error("Error cargando los datos guardados", e);
     alert("No se pudieron cargar tus notas guardadas. Prueba a recargar la app.");
