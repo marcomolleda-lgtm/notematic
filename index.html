@@ -62,6 +62,7 @@
   --text:#242320;
   --text-muted:#9a9384;
   --date:#3b7dd8;
+  --brand:#2658a1; /* azul notematic definitivo */
   --border:#e5e0d3;
   --shadow: 6px 8px 22px rgba(60,50,30,0.14);
   --shadow-soft: 3px 5px 10px rgba(60,50,30,0.22);
@@ -127,7 +128,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   position:relative;
   z-index:1;
 }
-#folder-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#folder-name{color:var(--brand);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 #folder-count{
   font-weight:400;
   font-size:16px;
@@ -226,7 +227,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 }
 .note-date{
   font-size:13px;
-  color:var(--date);
+  color:var(--brand);
 }
 .read-more{
   color:var(--text-muted);
@@ -357,12 +358,12 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 }
 .modal-title{
   font-family:'Lora',serif;
-  font-size:19px;font-weight:600;
+  font-size:20px;font-weight:600;
   margin-bottom:16px;
   color:var(--text);
 }
 .modal-subtitle{
-  font-size:13px;color:var(--text-muted);
+  font-size:14px;color:var(--text-muted);
   margin:-8px 0 16px;line-height:1.5;
 }
 .new-folder-row{
@@ -371,14 +372,14 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 .new-folder-input{
   flex:1;padding:11px 14px;
   border:1px solid var(--border);border-radius:10px;
-  font-family:'DM Sans',sans-serif;font-size:14px;
+  font-family:'DM Sans',sans-serif;font-size:15px;
   outline:none;color:var(--text);
 }
 .new-folder-input:focus{border-color:var(--date);}
 .new-folder-add{
-  background:var(--text);color:#fff;
+  background:var(--brand);color:#fff;
   padding:0 18px;border-radius:10px;
-  font-size:14px;font-weight:600;
+  font-size:15px;font-weight:600;
 }
 .folder-chips{
   display:flex;flex-wrap:wrap;gap:10px;
@@ -390,7 +391,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   border-radius:20px;
   background:var(--bg);
   border:1px solid var(--border);
-  font-size:14px;color:var(--text);
+  font-size:15px;color:var(--text);
   cursor:pointer;
 }
 .folder-chip.active{
@@ -419,11 +420,11 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   flex-shrink:0;
 }
 .modal-link-btn{
-  font-size:14px;color:var(--text-muted);font-weight:600;
+  font-size:15px;color:var(--text-muted);font-weight:600;
 }
 .menu-option{
   padding:13px 6px;
-  font-size:15px;
+  font-size:16px;
   color:var(--text);
   border-bottom:1px solid var(--border);
   cursor:pointer;
@@ -437,8 +438,8 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   cursor:pointer;
 }
 .search-result:last-child{border-bottom:none;}
-.search-result-title{font-weight:700;font-size:15px;color:var(--text);}
-.search-result-folder{font-size:12px;color:var(--text-muted);margin-top:2px;}
+.search-result-title{font-weight:700;font-size:16px;color:var(--text);}
+.search-result-folder{font-size:13px;color:var(--text-muted);margin-top:2px;}
 </style>
 </head>
 <body>
@@ -545,9 +546,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 <!-- ═══════ MODAL: MENÚ (icono cuaderno, contenido distinto según contexto) ═══════ -->
 <div class="modal-overlay hidden" id="modal-menu">
   <div class="modal-box">
-    <div class="modal-title" id="menu-title">Menú</div>
     <div id="menu-options" style="display:flex;flex-direction:column;gap:2px;"></div>
-    <div class="modal-actions-row" id="menu-close-row"><button class="modal-link-btn" id="menu-close">Cerrar</button></div>
   </div>
 </div>
 
@@ -1358,11 +1357,6 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   function openMenu(context){
     menuContext = context;
     menuOptions.innerHTML = "";
-    // Dentro de una nota, la ventana lleva solo las opciones (sin la
-    // cabecera "Menú" ni "Cerrar"): se cierra al elegir una o tocando fuera.
-    var inEditor = context === "editor";
-    document.getElementById("menu-title").style.display = inEditor ? "none" : "";
-    document.getElementById("menu-close-row").style.display = inEditor ? "none" : "";
     if(context === "list"){
       addMenuOption("Buscar", openSearch);
       addMenuOption("Exportar todo (copia de seguridad)", exportAllNotes);
@@ -1383,9 +1377,6 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   modalMenu.addEventListener("click", function(e){
     if(e.target === modalMenu) modalMenu.classList.add("hidden");
   });
-  document.getElementById("menu-close").addEventListener("click", function(){
-    modalMenu.classList.add("hidden");
-  });
 
   // ── BUSCAR ──
   var modalSearch = document.getElementById("modal-search");
@@ -1402,7 +1393,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     searchResults.innerHTML = "";
     var words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
     if(words.length === 0){
-      searchResults.innerHTML = '<div style="padding:12px 4px;color:var(--text-muted);font-size:14px;">Escribe para buscar en todas las notas.</div>';
+      searchResults.innerHTML = '<div style="padding:12px 4px;color:var(--text-muted);font-size:15px;">Escribe para buscar en todas las notas.</div>';
       return;
     }
     var matches = data.notes.filter(function(n){
@@ -1411,7 +1402,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     }).sort(function(a,b){ return b.updatedAt - a.updatedAt; });
 
     if(matches.length === 0){
-      searchResults.innerHTML = '<div style="padding:12px 4px;color:var(--text-muted);font-size:14px;">Sin resultados.</div>';
+      searchResults.innerHTML = '<div style="padding:12px 4px;color:var(--text-muted);font-size:15px;">Sin resultados.</div>';
       return;
     }
     matches.forEach(function(n){
