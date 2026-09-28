@@ -406,6 +406,8 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 .move-chips .folder-chip{justify-content:flex-start;flex-shrink:0;}
 .move-chips .chip-name{max-width:none;}
 #btn-menu-editor{margin-right:8px;}
+#folder-chips .chip-name{flex:1;}
+#folder-chips .chip-action{font-size:16px;padding:4px 8px;}
 .chip-action{
   font-size:12px;color:var(--text-muted);
   padding:2px 4px;
@@ -503,15 +505,15 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 <input type="file" id="image-insert-camera" accept="image/*" capture="environment" style="display:none;"/>
 
 <!-- ═══════ MODAL: ELEGIR/GESTIONAR CARPETAS (uso general, desde icono carpeta) ═══════ -->
+<!-- Sin botón "Cerrar": tocar fuera de la ventana la cierra. -->
 <div class="modal-overlay hidden" id="modal-folders">
   <div class="modal-box">
     <div class="modal-title">Carpetas</div>
-    <div class="new-folder-row">
+    <div class="folder-chips move-chips" id="folder-chips"></div>
+    <div class="new-folder-row" style="margin-bottom:0;">
       <input class="new-folder-input" id="new-folder-input" type="text" placeholder="Nueva carpeta..."/>
       <button class="new-folder-add" id="new-folder-add">Crear</button>
     </div>
-    <div class="folder-chips" id="folder-chips"></div>
-    <div class="modal-actions-row"><button class="modal-link-btn" id="modal-close">Cerrar</button></div>
   </div>
 </div>
 
@@ -543,9 +545,9 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 <!-- ═══════ MODAL: MENÚ (icono cuaderno, contenido distinto según contexto) ═══════ -->
 <div class="modal-overlay hidden" id="modal-menu">
   <div class="modal-box">
-    <div class="modal-title">Menú</div>
+    <div class="modal-title" id="menu-title">Menú</div>
     <div id="menu-options" style="display:flex;flex-direction:column;gap:2px;"></div>
-    <div class="modal-actions-row"><button class="modal-link-btn" id="menu-close">Cerrar</button></div>
+    <div class="modal-actions-row" id="menu-close-row"><button class="modal-link-btn" id="menu-close">Cerrar</button></div>
   </div>
 </div>
 
@@ -1168,12 +1170,16 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   var moveChips = document.getElementById("move-chips");
   var moveNewInput = document.getElementById("move-new-input");
 
-  function renderMoveChips(){
-    moveChips.innerHTML = "";
+  function sortedFolders(){
     var others = data.folders.filter(function(f){ return !f.isAll; }).sort(function(a, b){
       return a.name.localeCompare(b.name, "es", {sensitivity:"base"});
     });
-    [getAllFolder()].concat(others).forEach(function(f){
+    return [getAllFolder()].concat(others);
+  }
+
+  function renderMoveChips(){
+    moveChips.innerHTML = "";
+    sortedFolders().forEach(function(f){
       var chip = document.createElement("div");
       chip.className = "folder-chip" + (f.id === editingFolderId ? " active" : "");
       chip.innerHTML = '<span class="chip-name">' + escapeHtml(f.name) + '</span>';
@@ -1255,7 +1261,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 
   function renderFolderModal(){
     folderChipsMain.innerHTML = "";
-    data.folders.forEach(function(f){
+    sortedFolders().forEach(function(f){
       var chip = document.createElement("div");
       chip.className = "folder-chip" + (f.id === data.currentFolderId ? " active" : "");
       chip.innerHTML =
@@ -1278,34 +1284,21 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
           renderList();
         }
       });
-      if(f.isAll) { folderChipsMain.appendChild(chip); return; }
-      chip.querySelector('[data-action="delete"]').addEventListener("click", function(e){
-        e.stopPropagation();
-        var newName = prompt("Nuevo nombre de la carpeta:", f.name);
-        if(newName && newName.trim()){
-          f.name = newName.trim();
-          saveData();
-          renderFolderModal();
-          renderList();
-        }
-      });
-      chip.querySelector('[data-action="delete"]').addEventListener("click", function(e){
-        e.stopPropagation();
-        if(data.folders.length <= 1){
-          alert("Debe quedar al menos una carpeta.");
-          return;
-        }
-        if(confirm('¿Eliminar la carpeta "' + f.name + '" y todas sus notas?')){
-          data.notes = data.notes.filter(function(n){ return n.folderId !== f.id; });
-          data.folders = data.folders.filter(function(ff){ return ff.id !== f.id; });
-          if(data.currentFolderId === f.id){
-            data.currentFolderId = data.folders[0].id;
+      if(!f.isAll){
+        chip.querySelector('[data-action="delete"]').addEventListener("click", function(e){
+          e.stopPropagation();
+          if(confirm('¿Eliminar la carpeta "' + f.name + '" y todas sus notas?')){
+            data.notes = data.notes.filter(function(n){ return n.folderId !== f.id; });
+            data.folders = data.folders.filter(function(ff){ return ff.id !== f.id; });
+            if(data.currentFolderId === f.id){
+              data.currentFolderId = getAllFolder().id;
+            }
+            saveData();
+            renderFolderModal();
+            renderList();
           }
-          saveData();
-          renderFolderModal();
-          renderList();
-        }
-      });
+        });
+      }
       folderChipsMain.appendChild(chip);
     });
   }
@@ -1314,8 +1307,8 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     renderFolderModal();
     modalFolders.classList.remove("hidden");
   });
-  document.getElementById("modal-close").addEventListener("click", function(){
-    modalFolders.classList.add("hidden");
+  modalFolders.addEventListener("click", function(e){
+    if(e.target === modalFolders) modalFolders.classList.add("hidden");
   });
   document.getElementById("new-folder-add").addEventListener("click", function(){
     var name = newFolderInput.value.trim();
@@ -1365,6 +1358,11 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   function openMenu(context){
     menuContext = context;
     menuOptions.innerHTML = "";
+    // Dentro de una nota, la ventana lleva solo las opciones (sin la
+    // cabecera "Menú" ni "Cerrar"): se cierra al elegir una o tocando fuera.
+    var inEditor = context === "editor";
+    document.getElementById("menu-title").style.display = inEditor ? "none" : "";
+    document.getElementById("menu-close-row").style.display = inEditor ? "none" : "";
     if(context === "list"){
       addMenuOption("Buscar", openSearch);
       addMenuOption("Exportar todo (copia de seguridad)", exportAllNotes);
