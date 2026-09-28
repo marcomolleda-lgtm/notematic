@@ -200,15 +200,12 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   min-width:0;
 }
 .note-thumb{
-  /* Cuadrado cuyo lado coincide con la altura del bloque de vista previa +
-     fecha (align-items:stretch lo estira a esa altura, y aspect-ratio hace
-     que el ancho la iguale). object-fit:cover ajusta la imagen por su lado
-     más grande, recortando el otro. min-width:0 es imprescindible: sin
-     él, una <img> como elemento flexible no encoge por debajo de su
-     tamaño real y se ve enorme, aunque el resto de reglas sean correctas. */
-  aspect-ratio:1/1;
-  height:auto;
-  min-width:0;
+  /* El tamaño final (ancho=alto, igual a la altura del bloque de texto)
+     se fija por JavaScript tras dibujar la lista — ver renderList(). Un
+     cuadrado fijo aquí es solo el valor de respaldo por si esa medición
+     fallara alguna vez. */
+  width:84px;
+  height:84px;
   object-fit:cover;
   border-radius:10px;
   flex-shrink:0;
@@ -727,6 +724,25 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
         openEditor(note.id);
       });
       notesListEl.appendChild(card);
+    });
+
+    // Fijar el tamaño real (cuadrado) de las miniaturas: se mide la altura
+    // que ocupa el texto (vista previa + fecha) de cada tarjeta y se aplica
+    // como ancho y alto de su miniatura, ya que depender solo de CSS
+    // (aspect-ratio + stretch de flexbox) no daba un resultado fiable.
+    requestAnimationFrame(function(){
+      var thumbs = notesListEl.querySelectorAll(".note-thumb");
+      for(var i = 0; i < thumbs.length; i++){
+        var thumb = thumbs[i];
+        var textCol = thumb.previousElementSibling;
+        if(textCol){
+          var h = textCol.offsetHeight;
+          if(h > 0){
+            thumb.style.width = h + "px";
+            thumb.style.height = h + "px";
+          }
+        }
+      }
     });
   }
 
