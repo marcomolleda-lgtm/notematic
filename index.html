@@ -201,12 +201,15 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 }
 .note-thumb{
   /* El tamaño final (ancho=alto, igual a la altura del bloque de texto)
-     se fija por JavaScript tras dibujar la lista — ver renderList(). Un
-     cuadrado fijo aquí es solo el valor de respaldo por si esa medición
-     fallara alguna vez. */
-  width:84px;
-  height:84px;
-  object-fit:cover;
+     se fija por JavaScript tras dibujar la lista (ver renderList). Un
+     cuadrado fijo aquí es solo el valor de respaldo. Se usa una imagen de
+     fondo (background-size:cover) en vez de un <img>: así no aparecen las
+     líneas grises finas en los bordes que salían por redondeos de píxeles. */
+  width:70px;
+  height:70px;
+  background-size:cover;
+  background-position:center;
+  background-repeat:no-repeat;
   border-radius:10px;
   flex-shrink:0;
 }
@@ -216,6 +219,9 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   color:var(--text);
   white-space:pre-wrap;
   overflow:hidden;
+  display:-webkit-box;
+  -webkit-line-clamp:3;
+  -webkit-box-orient:vertical;
   margin-bottom:10px;
 }
 .note-date{
@@ -709,7 +715,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
         previewHtml = escapeHtml(flatPreview);
       }
       var thumbMatch = note.bodyHtml ? note.bodyHtml.match(/<img[^>]+src="([^"]+)"/i) : null;
-      var thumbHtml = thumbMatch ? '<img class="note-thumb" src="' + thumbMatch[1] + '" alt=""/>' : "";
+      var thumbHtml = thumbMatch ? '<div class="note-thumb" style="background-image:url(\'' + thumbMatch[1] + '\')"></div>' : "";
       card.innerHTML =
         '<div class="note-title">' + escapeHtml(title) + '</div>' +
         '<div class="note-body-row">' +
