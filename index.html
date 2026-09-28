@@ -1132,6 +1132,13 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     recordingActive = false;
     modalRecord.classList.add("hidden");
   }
+  // Carácter invisible (espacio de ancho cero): da al cursor un sitio donde
+  // vivir justo debajo de un reproductor. Los navegadores no dejan poner el
+  // cursor pegado detrás de un bloque no editable, y por eso antes el texto
+  // se escribía siempre por encima. Se quita del texto plano al guardar.
+  var ZW = "\u200B";
+  function isAudioClip(n){ return !!(n && n.nodeType === 1 && n.classList && n.classList.contains("audio-clip")); }
+
   function insertAudioClip(id, duration){
     var clip = document.createElement("div");
     clip.setAttribute("data-audio-id", id);
@@ -1150,14 +1157,26 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     }
     var range = sel.getRangeAt(0);
     range.deleteContents();
-    range.insertNode(clip);
-    // Si el reproductor queda al final de la nota, se añade una línea
-    // detrás para poder seguir escribiendo.
-    if(!clip.nextSibling){
-      clip.parentNode.appendChild(document.createElement("br"));
+    // Si el cursor está en la línea de debajo de otro reproductor, el nuevo
+    // se coloca pegado a ese (sin dejar una línea vacía entre los dos).
+    var sc = range.startContainer;
+    if(sc.nodeType === 3 && sc.nodeValue.charAt(0) === ZW && isAudioClip(sc.previousSibling) && range.startOffset <= 1){
+      range.setStartBefore(sc);
+      range.collapse(true);
     }
-    range.setStartAfter(clip);
-    range.setEndAfter(clip);
+    range.insertNode(clip);
+    // Debajo del reproductor siempre queda un texto editable donde seguir escribiendo
+    var next = clip.nextSibling;
+    var caretNode;
+    if(next && next.nodeType === 3){
+      if(next.nodeValue.charAt(0) !== ZW) next.nodeValue = ZW + next.nodeValue;
+      caretNode = next;
+    } else {
+      caretNode = document.createTextNode(ZW);
+      clip.parentNode.insertBefore(caretNode, next);
+    }
+    range.setStart(caretNode, 1);
+    range.collapse(true);
     sel.removeAllRanges();
     sel.addRange(range);
   }
@@ -1183,9 +1202,17 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     }
     var sel = window.getSelection();
     rec.range = (sel && sel.rangeCount && bodyInput.contains(sel.anchorNode)) ? sel.getRangeAt(0).cloneRange() : null;
-    navigator.mediaDevices.getUserMedia({audio: true}).then(function(stream){
+    // Sin cancelación de eco ni control automático de volumen (pensados para
+    // llamadas, dejan la voz con sonido "de lata"); se mantiene la reducción
+    // de ruido. Mono y 64 kbps: buena calidad de voz con archivos ligeros.
+    navigator.mediaDevices.getUserMedia({audio: {
+      echoCancellation: false,
+      autoGainControl: false,
+      noiseSuppression: true,
+      channelCount: 1
+    }}).then(function(stream){
       var mime = pickAudioMime();
-      var opts = {audioBitsPerSecond: 32000};
+      var opts = {audioBitsPerSecond: 64000};
       if(mime) opts.mimeType = mime;
       var recorder;
       try{ recorder = new MediaRecorder(stream, opts); }
@@ -1232,7 +1259,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     // que crea el teclado (ya sean <br>, párrafos <div>, o "\n" sueltos).
     // textContent los ignoraba y por eso, al guardar y reabrir, los
     // párrafos con punto y aparte aparecían todos seguidos.
-    return bodyInput.innerText || "";
+    return (bodyInput.innerText || "").replace(/\u200B/g, "");
   }
   function setBodyText(text){
     bodyInput.innerHTML = text ? linkifyHtml(escapeHtml(text)) : "";
