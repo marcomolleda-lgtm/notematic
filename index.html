@@ -1047,7 +1047,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   var modalRecord = document.getElementById("modal-record");
   var recordTimeEl = document.getElementById("record-time");
   var recordingActive = false;
-  var rec = {recorder:null, stream:null, chunks:[], startedAt:0, timer:null, discard:false, range:null};
+  var rec = {recorder:null, stream:null, ctx:null, chunks:[], startedAt:0, timer:null, discard:false, range:null};
 
   function formatTime(sec){
     sec = Math.max(0, Math.round(sec || 0));
@@ -1126,9 +1126,36 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     }
     return "";
   }
+  // Procesado de la voz antes de grabarla (Web Audio): quita el retumbo
+  // grave, aclara un poco la voz, sube el volumen y frena los picos para que
+  // no saturen. Si algo falla, se graba el sonido sin procesar.
+  function buildVoiceChain(ctx, stream){
+    var src = ctx.createMediaStreamSource(stream);
+    var hp = ctx.createBiquadFilter();            // corta ruido/golpes graves
+    hp.type = "highpass"; hp.frequency.value = 100; hp.Q.value = 0.7;
+    var low = ctx.createBiquadFilter();           // menos "cuerpo" grave
+    low.type = "lowshelf"; low.frequency.value = 250; low.gain.value = -4;
+    var pres = ctx.createBiquadFilter();          // más claridad de la voz
+    pres.type = "peaking"; pres.frequency.value = 3000; pres.Q.value = 0.8; pres.gain.value = 3;
+    var air = ctx.createBiquadFilter();           // un punto más de agudos
+    air.type = "highshelf"; air.frequency.value = 6000; air.gain.value = 3;
+    var comp = ctx.createDynamicsCompressor();    // iguala volumen (sube lo bajo, frena lo fuerte)
+    comp.threshold.value = -30; comp.knee.value = 24; comp.ratio.value = 4;
+    comp.attack.value = 0.01; comp.release.value = 0.25;
+    var makeup = ctx.createGain();                // volumen general
+    makeup.gain.value = 3;
+    var limiter = ctx.createDynamicsCompressor(); // freno final de picos
+    limiter.threshold.value = -6; limiter.knee.value = 0; limiter.ratio.value = 20;
+    limiter.attack.value = 0.002; limiter.release.value = 0.1;
+    var dest = ctx.createMediaStreamDestination();
+    src.connect(hp); hp.connect(low); low.connect(pres); pres.connect(air);
+    air.connect(comp); comp.connect(makeup); makeup.connect(limiter); limiter.connect(dest);
+    return dest.stream;
+  }
   function endRecordingCleanup(){
     clearInterval(rec.timer);
     if(rec.stream) rec.stream.getTracks().forEach(function(t){ t.stop(); });
+    if(rec.ctx){ try{ rec.ctx.close(); }catch(e){} rec.ctx = null; }
     recordingActive = false;
     modalRecord.classList.add("hidden");
   }
@@ -1202,6 +1229,11 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     }
     var sel = window.getSelection();
     rec.range = (sel && sel.rangeCount && bodyInput.contains(sel.anchorNode)) ? sel.getRangeAt(0).cloneRange() : null;
+    var ctx = null;
+    try{
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if(AC){ ctx = new AC(); if(ctx.resume) ctx.resume(); }
+    }catch(err){ ctx = null; }
     // Sin cancelación de eco ni control automático de volumen (pensados para
     // llamadas, dejan la voz con sonido "de lata"); se mantiene la reducción
     // de ruido. Mono y 64 kbps: buena calidad de voz con archivos ligeros.
@@ -1214,9 +1246,15 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       var mime = pickAudioMime();
       var opts = {audioBitsPerSecond: 64000};
       if(mime) opts.mimeType = mime;
+      var recStream = stream;
+      rec.ctx = null;
+      if(ctx){
+        try{ recStream = buildVoiceChain(ctx, stream); rec.ctx = ctx; }
+        catch(err){ recStream = stream; try{ ctx.close(); }catch(e2){} }
+      }
       var recorder;
-      try{ recorder = new MediaRecorder(stream, opts); }
-      catch(err){ recorder = new MediaRecorder(stream); }
+      try{ recorder = new MediaRecorder(recStream, opts); }
+      catch(err){ recorder = new MediaRecorder(recStream); }
       rec.recorder = recorder; rec.stream = stream; rec.chunks = []; rec.discard = false;
       recorder.ondataavailable = function(ev){ if(ev.data && ev.data.size) rec.chunks.push(ev.data); };
       recorder.onstop = finishRecording;
@@ -1232,6 +1270,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       }, 250);
       modalRecord.classList.remove("hidden");
     }).catch(function(){
+      if(ctx){ try{ ctx.close(); }catch(e){} }
       alert("No se pudo acceder al micrófono. Revisa el permiso del navegador.");
     });
   });
