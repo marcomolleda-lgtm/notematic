@@ -58,6 +58,7 @@
   --bg:#faf9f5;
   --topbar-dark:#f0ede8;
   --tab-shadow: rgba(112,103,81,0.38);
+  --tab-shadow-blue: rgba(58,80,116,0.40);
   --white:#ffffff;
   --text:#242320;
   --text-muted:#9a9384;
@@ -95,7 +96,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 }
 #topbar{
   position:relative;
-  background:var(--topbar-dark);
+  background:#dee6f1; /* azul Notematic al 15 % */
   height:calc(var(--topbar-h) + env(safe-area-inset-top,0px));
   padding-top:env(safe-area-inset-top,0px);
   display:flex;align-items:flex-end;
@@ -109,7 +110,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   height:calc(var(--topbar-h) - var(--tab-top-margin));
   background:var(--bg);
   border-radius:16px 16px 0 0;
-  box-shadow: 5px 4px 10px var(--tab-shadow);
+  box-shadow: 5px 4px 10px var(--tab-shadow-blue);
   z-index:0;
 }
 #folder-tab{
@@ -124,7 +125,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   color:var(--text);
   overflow:hidden;
   border-radius:16px 16px 0 0;
-  box-shadow: 6px 7px 14px var(--tab-shadow);
+  box-shadow: 6px 7px 14px var(--tab-shadow-blue);
   position:relative;
   z-index:1;
 }
@@ -372,6 +373,47 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 #camera-shutter:active::after{background:#ccc;}
 #camera-close{position:absolute;left:22px;top:50%;transform:translateY(-50%);width:44px;height:44px;color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;}
 
+
+/* ── NOTA DESTACADA ── */
+.note-card.featured{
+  position:relative;
+  margin:0 0 22px;
+  padding:18px 18px 16px;
+  background:#e9eef6;
+  border:none;
+  border-radius:var(--radius);
+  box-shadow:0 1px 3px rgba(22,38,66,0.30),0 6px 16px rgba(22,38,66,0.30);
+}
+.note-card.featured .note-title{padding-right:30px;}
+.note-card.featured .feat-pin-btn{
+  position:absolute;top:4px;right:4px;
+  width:44px;height:44px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--brand);
+}
+.feat-pin-btn svg,#editor-pin svg{width:20.4px;height:20.4px;display:block;}
+#editor-body-wrap{position:relative;}
+#editor-pin{
+  position:absolute;top:3px;right:20px;
+  width:40px;height:40px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--brand);z-index:2;
+}
+#editor-pin.hidden{display:none;}
+#note-title-input.has-pin{padding-right:46px;}
+#toast{
+  position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom,0px));
+  transform:translate(-50%,12px);opacity:0;pointer-events:none;
+  background:#2b2a27;color:#fff;
+  padding:12px 12px 12px 18px;border-radius:14px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.28);
+  display:flex;align-items:center;gap:14px;
+  font-size:15px;z-index:250;max-width:calc(100vw - 32px);
+  transition:opacity .2s,transform .2s;
+}
+#toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto;}
+#toast button{color:#9fc1f2;font-weight:700;font-size:15px;padding:4px 8px;}
+
 /* ── VENTANAS FLOTANTES (MODALES) ── */
 .modal-overlay{
   position:fixed;inset:0;
@@ -559,6 +601,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     </div>
   </div>
   <div id="editor-body-wrap">
+    <button id="editor-pin" class="hidden" aria-label="Nota destacada"></button>
     <div id="note-title-input" contenteditable="true" data-placeholder="Título de la nota"></div>
     <span id="note-date-display"></span>
     <div id="note-body-input" contenteditable="true" data-placeholder="Escribe aquí..." autocomplete="off" autocorrect="off"></div>
@@ -637,7 +680,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     <div class="modal-title">¿Guardar los cambios?</div>
     <div class="modal-actions-row">
       <button class="modal-link-btn" id="save-pick-discard">Descartar</button>
-      <button class="modal-link-btn" id="save-pick-direct" style="font-weight:700;">Guardar</button>
+      <button class="modal-link-btn" id="save-pick-direct" style="font-weight:700;color:var(--brand);">Guardar</button>
     </div>
   </div>
 </div>
@@ -821,6 +864,67 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   }
 
   var data; // se asigna de forma asíncrona antes del primer renderList()
+  var pendingFeature = null; // destacar/quitar en una nota nueva aún sin guardar
+  // ── NOTA DESTACADA: chincheta en el editor, menú y aviso con "Deshacer" ──
+  var featPinSession = false; // la chincheta se muestra si la nota era destacada al abrirla o si se ha tocado en esta sesión
+  function pinSvg(crossed){
+    var x = '';
+    var pc = crossed ? '#cdcac2' : 'currentColor';
+    return '<svg viewBox="-2 -2 28 28" aria-hidden="true"><g transform="rotate(35 12 12)" fill="' + pc + '" stroke="' + pc + '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16v6"/><path d="M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2v.8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.8a2 2 0 0 0-1.1-1.8l-1.8-.9A2 2 0 0 1 15 10.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></g>' + x + '</svg>';
+  }
+  function hasFeaturedNote(){
+    return !!data.featuredId && data.notes.some(function(n){ return n.id === data.featuredId; });
+  }
+  function isFeaturedNow(){
+    return pendingFeature !== null ? pendingFeature : (!!editingNoteId && data.featuredId === editingNoteId);
+  }
+  function updateEditorPin(){
+    var btn = document.getElementById("editor-pin");
+    var f = isFeaturedNow();
+    // Se ve en esta nota si ella es la destacada o si no hay ninguna destacada.
+    var vis = f || !hasFeaturedNote();
+    btn.classList.toggle("hidden", !vis);
+    titleInput.classList.toggle("has-pin", vis);
+    if(!vis) return;
+    btn.innerHTML = pinSvg(!f);
+    btn.setAttribute("aria-label", f ? "Quitar de destacada" : "Destacar esta nota");
+  }
+  function setFeaturedNow(want){
+    if(editingNoteId){
+      if(want) data.featuredId = editingNoteId;
+      else if(data.featuredId === editingNoteId) data.featuredId = null;
+      saveData();
+    } else {
+      pendingFeature = want;
+    }
+    featPinSession = true;
+    updateEditorPin();
+  }
+  document.getElementById("editor-pin").addEventListener("pointerdown", function(e){ e.preventDefault(); });
+  document.getElementById("editor-pin").addEventListener("click", function(){ setFeaturedNow(!isFeaturedNow()); });
+
+  var toastTimer = null;
+  function showToast(msg, label, fn){
+    var t = document.getElementById("toast"), b = document.getElementById("toast-action");
+    document.getElementById("toast-msg").textContent = msg;
+    b.classList.toggle("hidden", !label);
+    b.textContent = label || "";
+    b.onclick = function(){ t.classList.remove("show"); if(fn) fn(); };
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 7500);
+  }
+  function unfeatureFromList(id){
+    data.featuredId = null;
+    saveData();
+    renderList();
+    showToast("Nota quitada de destacadas", "Deshacer", function(){
+      data.featuredId = id;
+      saveData();
+      renderList();
+    });
+  }
+
 
   function saveData(){
     idbSet(STORAGE_KEY, data).catch(function(e){
@@ -865,20 +969,24 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   function renderList(){
     var folder = currentFolder();
     var notes = notesInFolder(folder);
+    // Nota destacada: una sola, visible arriba en todas las carpetas.
+    var featuredNote = data.featuredId ? data.notes.find(function(n){ return n.id === data.featuredId; }) : null;
+    if(featuredNote) notes = notes.filter(function(n){ return n.id !== featuredNote.id; });
     folderNameEl.textContent = folder.name;
-    folderCountEl.textContent = notes.length;
+    folderCountEl.textContent = notes.length + (featuredNote ? 1 : 0);
 
     notesListEl.innerHTML = "";
-    if(notes.length === 0){
+    if(notes.length === 0 && !featuredNote){
       var empty = document.createElement("div");
       empty.id = "empty-state";
       empty.textContent = "No hay notas en esta carpeta todavía. Pulsa + para crear la primera.";
       notesListEl.appendChild(empty);
       return;
     }
-    notes.forEach(function(note){
+    (featuredNote ? [featuredNote] : []).concat(notes).forEach(function(note, idx){
+      var isFeat = !!featuredNote && idx === 0;
       var card = document.createElement("div");
-      card.className = "note-card";
+      card.className = "note-card" + (isFeat ? " featured" : "");
       var title = note.title && note.title.trim() ? note.title : "Sin título";
       var rawPreview = (note.body || "").trim();
       var flatPreview = rawPreview.replace(/\s+/g, " ");
@@ -896,6 +1004,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       var thumbMatch = note.bodyHtml ? note.bodyHtml.match(/<img[^>]+src="([^"]+)"/i) : null;
       var thumbHtml = thumbMatch ? '<div class="note-thumb" style="background-image:url(\'' + thumbMatch[1] + '\')"></div>' : "";
       card.innerHTML =
+        (isFeat ? '<button class="feat-pin-btn" aria-label="Quitar de destacada">' + pinSvg(false) + '</button>' : '') +
         '<div class="note-title">' + escapeHtml(title) + '</div>' +
         '<div class="note-body-row">' +
           '<div class="note-text-col">' +
@@ -904,6 +1013,12 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
           '</div>' +
           thumbHtml +
         '</div>';
+      if(isFeat){
+        card.querySelector(".feat-pin-btn").addEventListener("click", function(e){
+          e.stopPropagation();
+          unfeatureFromList(note.id);
+        });
+      }
       card.addEventListener("click", function(){
         if(window.__onlyNotesSuppressClick) return;
         openEditor(note.id);
@@ -1220,7 +1335,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   var modalRecord = document.getElementById("modal-record");
   var recordTimeEl = document.getElementById("record-time");
   var recordingActive = false;
-  var rec = {recorder:null, stream:null, ctx:null, chunks:[], startedAt:0, timer:null, discard:false, range:null};
+  var rec = {recorder:null, stream:null, ctx:null, chunks:[], startedAt:0, timer:null, discard:false, range:null, rawRecorder:null, rawChunks:[], rawDone:null};
 
   function formatTime(sec){
     sec = Math.max(0, Math.round(sec || 0));
@@ -1385,11 +1500,18 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     var mime = (rec.recorder && rec.recorder.mimeType) || "audio/webm";
     var duration = (Date.now() - rec.startedAt) / 1000;
     var chunks = rec.chunks;
+    var rawChunks = rec.rawChunks, rawDone = rec.rawDone;
     endRecordingCleanup();
     if(discard || !chunks.length) return;
     var blob = new Blob(chunks, {type: mime});
     var id = uid();
-    idbStorePut(AUDIO_STORE, id, {id: id, blob: blob, mime: mime, duration: duration, createdAt: Date.now()})
+    // PRUEBA: junto a la grabación procesada se guarda una copia original
+    // (sin ecualizar) para poder analizar las dos. Se quitará después.
+    (rawDone || Promise.resolve()).then(function(){
+      var record = {id: id, blob: blob, mime: mime, duration: duration, createdAt: Date.now()};
+      if(rawChunks && rawChunks.length) record.rawBlob = new Blob(rawChunks, {type: mime});
+      return idbStorePut(AUDIO_STORE, id, record);
+    })
       .then(function(){ insertAudioClip(id, duration); })
       .catch(function(){ alert("No se pudo guardar la grabación."); });
   }
@@ -1429,12 +1551,22 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       try{ recorder = new MediaRecorder(recStream, opts); }
       catch(err){ recorder = new MediaRecorder(recStream); }
       rec.recorder = recorder; rec.stream = stream; rec.chunks = []; rec.discard = false;
+      rec.rawRecorder = null; rec.rawChunks = []; rec.rawDone = null;
+      try{
+        var rawOpts = {audioBitsPerSecond: 128000};
+        if(mime) rawOpts.mimeType = mime;
+        var rawRec = new MediaRecorder(stream, rawOpts);
+        rawRec.ondataavailable = function(ev){ if(ev.data && ev.data.size) rec.rawChunks.push(ev.data); };
+        rec.rawDone = new Promise(function(resolve){ rawRec.onstop = resolve; });
+        rec.rawRecorder = rawRec;
+      }catch(err){ rec.rawRecorder = null; rec.rawDone = null; }
       recorder.ondataavailable = function(ev){ if(ev.data && ev.data.size) rec.chunks.push(ev.data); };
       recorder.onstop = finishRecording;
       // Se quita el cursor para que su indicador no quede sobre la ventana
       window.getSelection().removeAllRanges();
       bodyInput.blur();
       recorder.start();
+      if(rec.rawRecorder){ try{ rec.rawRecorder.start(); }catch(err){ rec.rawRecorder = null; rec.rawDone = null; } }
       rec.startedAt = Date.now();
       recordingActive = true;
       recordTimeEl.textContent = "0:00";
@@ -1447,13 +1579,54 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       alert("No se pudo acceder al micrófono. Revisa el permiso del navegador.");
     });
   });
-  document.getElementById("record-stop").addEventListener("click", function(){
+  function stopBothRecorders(){
+    if(rec.rawRecorder && rec.rawRecorder.state !== "inactive"){ try{ rec.rawRecorder.stop(); }catch(err){} }
     if(rec.recorder && rec.recorder.state !== "inactive") rec.recorder.stop();
-  });
+  }
+  document.getElementById("record-stop").addEventListener("click", stopBothRecorders);
   document.getElementById("record-cancel").addEventListener("click", function(){
     rec.discard = true;
-    if(rec.recorder && rec.recorder.state !== "inactive") rec.recorder.stop();
+    stopBothRecorders();
   });
+
+  // PRUEBA: descarga las grabaciones de la nota abierta, cada una en dos
+  // archivos (procesada y original), para analizar y afinar el sonido.
+  function audioExt(mime){
+    mime = mime || "";
+    if(mime.indexOf("webm") !== -1) return "webm";
+    if(mime.indexOf("mp4") !== -1) return "m4a";
+    if(mime.indexOf("ogg") !== -1) return "ogg";
+    return "audio";
+  }
+  function saveBlobAs(blob, filename){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+  function downloadNoteAudios(){
+    var clips = bodyInput.querySelectorAll(".audio-clip");
+    var files = [];
+    var chain = Promise.resolve();
+    Array.prototype.forEach.call(clips, function(clip, i){
+      chain = chain.then(function(){
+        return idbStoreGet(AUDIO_STORE, clip.getAttribute("data-audio-id")).then(function(record){
+          if(!record) return;
+          var ext = audioExt(record.mime), n = i + 1;
+          files.push({blob: record.blob, name: "notematic-audio" + n + "-procesado." + ext});
+          if(record.rawBlob) files.push({blob: record.rawBlob, name: "notematic-audio" + n + "-original." + ext});
+        });
+      });
+    });
+    chain.then(function(){
+      if(!files.length){ alert("No hay grabaciones que descargar."); return; }
+      files.forEach(function(f, k){ setTimeout(function(){ saveBlobAs(f.blob, f.name); }, k * 700); });
+      if(!files.some(function(f){ return /original/.test(f.name); })){
+        showToast("Estas grabaciones son anteriores: solo tienen la versión procesada");
+      }
+    }).catch(function(){ alert("No se pudieron descargar los audios."); });
+  }
 
   // ── AUTO-ENLACE DE URLS Y CORREOS ──
   var LINK_RE = /((?:https?:\/\/|www\.)[^\s<]+[^\s<.,;:!?)\]]|[\w.+-]+@[\w-]+\.[\w.-]+)/g;
@@ -1662,8 +1835,11 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   var originalBodyHtml = "";
 
   function openEditor(noteId){
+    pendingFeature = null;
     stopAudioPlayback();
     editingNoteId = noteId || null;
+    featPinSession = !!(noteId && data.featuredId === noteId);
+    updateEditorPin();
     var note = noteId ? data.notes.find(function(n){ return n.id === noteId; }) : null;
 
     if(note){
@@ -1750,6 +1926,9 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       data.notes.push(newNote);
       editingNoteId = newNote.id;
     }
+    if(pendingFeature === true) data.featuredId = editingNoteId;
+    else if(pendingFeature === false && data.featuredId === editingNoteId) data.featuredId = null;
+    pendingFeature = null;
     // Con "Mover a...", tras guardar se abre la lista de la carpeta elegida;
     // con Guardar normal se vuelve a la lista donde estábamos.
     if(showFolder) data.currentFolderId = folderId;
@@ -1972,7 +2151,10 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     } else {
       addMenuOption("Guardar", saveDirect);
       addMenuOption("Mover a...", openMovePick);
+      var isFeatNow = isFeaturedNow();
+      addMenuOption(isFeatNow ? "Nota destacada" : "Destacar nota", function(){ setFeaturedNow(!isFeatNow); });
       addMenuOption("No guardar cambios", closeEditorToList);
+      if(bodyInput.querySelector(".audio-clip")) addMenuOption("Descargar audios (prueba)", downloadNoteAudios);
       addMenuOption("Compartir", shareCurrentNote);
       addMenuOption("Exportar", exportCurrentNote);
       addMenuOption("Eliminar", deleteCurrentNote, true);
@@ -2263,5 +2445,6 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   });
 })();
 </script>
+<div id="toast"><span id="toast-msg"></span><button id="toast-action" class="hidden"></button></div>
 </body>
 </html>
