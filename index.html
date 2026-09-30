@@ -1335,6 +1335,13 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   var modalRecord = document.getElementById("modal-record");
   var recordTimeEl = document.getElementById("record-time");
   var recordingActive = false;
+  // PRUEBA: reducción de ruido del móvil (desactivada por defecto).
+  function getNoiseSuppression(){
+    try{ return localStorage.getItem("nm_noise_suppression") === "1"; }catch(e){ return false; }
+  }
+  function setNoiseSuppression(on){
+    try{ localStorage.setItem("nm_noise_suppression", on ? "1" : "0"); }catch(e){}
+  }
   var rec = {recorder:null, stream:null, ctx:null, chunks:[], startedAt:0, timer:null, discard:false, range:null, rawRecorder:null, rawChunks:[], rawDone:null};
 
   function formatTime(sec){
@@ -1414,30 +1421,50 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     }
     return "";
   }
-  // Procesado de la voz antes de grabarla (Web Audio): quita el retumbo
-  // grave, aclara un poco la voz, sube el volumen y frena los picos para que
-  // no saturen. Si algo falla, se graba el sonido sin procesar.
+  // Procesado de la voz antes de grabarla (Web Audio). Cadena revisada tras
+  // analizar una grabación real: sin realce de agudos (el micro casi no tiene
+  // nada por encima de 9 kHz), compresión suave, reductor de "s" y "ch",
+  // volumen final normal y salida en mono. Si algo falla, se graba sin procesar.
+  // Nota: el compresor del navegador sube solo el volumen para compensar
+  // ("makeup" automático); dyn() lo anula para controlar el nivel a mano.
   function buildVoiceChain(ctx, stream){
+    function bq(type, f, q, g){
+      var n = ctx.createBiquadFilter();
+      n.type = type; n.frequency.value = f;
+      if(q != null) n.Q.value = q;
+      if(g != null) n.gain.value = g;
+      return n;
+    }
+    function dyn(th, knee, ratio, att, rel){
+      var c = ctx.createDynamicsCompressor();
+      c.threshold.value = th; c.knee.value = knee; c.ratio.value = ratio;
+      c.attack.value = att; c.release.value = rel;
+      var g = ctx.createGain();
+      g.gain.value = Math.pow(10, (0.6 * (th + (-th) / ratio)) / 20);
+      c.connect(g);
+      return {input: c, output: g};
+    }
     var src = ctx.createMediaStreamSource(stream);
-    var hp = ctx.createBiquadFilter();            // corta ruido/golpes graves
-    hp.type = "highpass"; hp.frequency.value = 100; hp.Q.value = 0.7;
-    var low = ctx.createBiquadFilter();           // menos "cuerpo" grave
-    low.type = "lowshelf"; low.frequency.value = 250; low.gain.value = -4;
-    var pres = ctx.createBiquadFilter();          // más claridad de la voz
-    pres.type = "peaking"; pres.frequency.value = 3000; pres.Q.value = 0.8; pres.gain.value = 3;
-    var air = ctx.createBiquadFilter();           // un punto más de agudos
-    air.type = "highshelf"; air.frequency.value = 6000; air.gain.value = 3;
-    var comp = ctx.createDynamicsCompressor();    // iguala volumen (sube lo bajo, frena lo fuerte)
-    comp.threshold.value = -30; comp.knee.value = 24; comp.ratio.value = 4;
-    comp.attack.value = 0.01; comp.release.value = 0.25;
-    var makeup = ctx.createGain();                // volumen general
-    makeup.gain.value = 3;
-    var limiter = ctx.createDynamicsCompressor(); // freno final de picos
-    limiter.threshold.value = -6; limiter.knee.value = 0; limiter.ratio.value = 20;
-    limiter.attack.value = 0.002; limiter.release.value = 0.1;
+    var hp = bq("highpass", 90, 0.7);              // corta ruido/golpes graves
+    var low = bq("lowshelf", 250, null, -3);       // menos "cuerpo" grave
+    var pres = bq("peaking", 3000, 0.8, 2.5);      // claridad de la voz
+    var lp = bq("lowpass", 9500, 0.7);             // sin agudos donde solo hay ruido
+    // Reductor de "s" y "ch": se separa la señal en dos bandas (cruce a 4500 Hz)
+    // y solo la banda aguda pasa por un compresor rápido.
+    var dl = ctx.createDelay(0.05); dl.delayTime.value = 0.006; // compensa el retardo del compresor
+    var lo1 = bq("lowpass", 4500, 0.7071), lo2 = bq("lowpass", 4500, 0.7071);
+    var hi1 = bq("highpass", 4500, 0.7071), hi2 = bq("highpass", 4500, 0.7071);
+    var ds = dyn(-40, 6, 4, 0.001, 0.05);
+    var sum = ctx.createGain();
+    var cp = dyn(-24, 20, 2.5, 0.01, 0.25);        // iguala el volumen con suavidad
+    var makeup = ctx.createGain(); makeup.gain.value = 2.2;   // volumen general
+    var lm = dyn(-3, 0, 20, 0.002, 0.1);           // freno final de picos
     var dest = ctx.createMediaStreamDestination();
-    src.connect(hp); hp.connect(low); low.connect(pres); pres.connect(air);
-    air.connect(comp); comp.connect(makeup); makeup.connect(limiter); limiter.connect(dest);
+    try{ dest.channelCount = 1; }catch(e){}
+    src.connect(hp); hp.connect(low); low.connect(pres); pres.connect(lp);
+    lp.connect(dl); dl.connect(lo1); lo1.connect(lo2); lo2.connect(sum);
+    lp.connect(hi1); hi1.connect(hi2); hi2.connect(ds.input); ds.output.connect(sum);
+    sum.connect(cp.input); cp.output.connect(makeup); makeup.connect(lm.input); lm.output.connect(dest);
     return dest.stream;
   }
   function endRecordingCleanup(){
@@ -1500,7 +1527,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     var mime = (rec.recorder && rec.recorder.mimeType) || "audio/webm";
     var duration = (Date.now() - rec.startedAt) / 1000;
     var chunks = rec.chunks;
-    var rawChunks = rec.rawChunks, rawDone = rec.rawDone;
+    var rawChunks = rec.rawChunks, rawDone = rec.rawDone, nsUsed = rec.ns;
     endRecordingCleanup();
     if(discard || !chunks.length) return;
     var blob = new Blob(chunks, {type: mime});
@@ -1508,7 +1535,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     // PRUEBA: junto a la grabación procesada se guarda una copia original
     // (sin ecualizar) para poder analizar las dos. Se quitará después.
     (rawDone || Promise.resolve()).then(function(){
-      var record = {id: id, blob: blob, mime: mime, duration: duration, createdAt: Date.now()};
+      var record = {id: id, blob: blob, mime: mime, duration: duration, createdAt: Date.now(), ns: nsUsed};
       if(rawChunks && rawChunks.length) record.rawBlob = new Blob(rawChunks, {type: mime});
       return idbStorePut(AUDIO_STORE, id, record);
     })
@@ -1532,10 +1559,11 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     // Sin cancelación de eco ni control automático de volumen (pensados para
     // llamadas, dejan la voz con sonido "de lata"); se mantiene la reducción
     // de ruido. Mono y 64 kbps: buena calidad de voz con archivos ligeros.
+    var nsOn = getNoiseSuppression();
     navigator.mediaDevices.getUserMedia({audio: {
       echoCancellation: false,
       autoGainControl: false,
-      noiseSuppression: true,
+      noiseSuppression: nsOn,
       channelCount: 1
     }}).then(function(stream){
       var mime = pickAudioMime();
@@ -1551,7 +1579,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       try{ recorder = new MediaRecorder(recStream, opts); }
       catch(err){ recorder = new MediaRecorder(recStream); }
       rec.recorder = recorder; rec.stream = stream; rec.chunks = []; rec.discard = false;
-      rec.rawRecorder = null; rec.rawChunks = []; rec.rawDone = null;
+      rec.rawRecorder = null; rec.rawChunks = []; rec.rawDone = null; rec.ns = nsOn;
       try{
         var rawOpts = {audioBitsPerSecond: 128000};
         if(mime) rawOpts.mimeType = mime;
@@ -1614,8 +1642,9 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
         return idbStoreGet(AUDIO_STORE, clip.getAttribute("data-audio-id")).then(function(record){
           if(!record) return;
           var ext = audioExt(record.mime), n = i + 1;
-          files.push({blob: record.blob, name: "notematic-audio" + n + "-procesado." + ext});
-          if(record.rawBlob) files.push({blob: record.rawBlob, name: "notematic-audio" + n + "-original." + ext});
+          var tag = record.ns === true ? "-ruido-si" : (record.ns === false ? "-ruido-no" : "");
+          files.push({blob: record.blob, name: "notematic-audio" + n + "-procesado" + tag + "." + ext});
+          if(record.rawBlob) files.push({blob: record.rawBlob, name: "notematic-audio" + n + "-original" + tag + "." + ext});
         });
       });
     });
@@ -2155,6 +2184,11 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       addMenuOption(isFeatNow ? "Nota destacada" : "Destacar nota", function(){ setFeaturedNow(!isFeatNow); });
       addMenuOption("No guardar cambios", closeEditorToList);
       if(bodyInput.querySelector(".audio-clip")) addMenuOption("Descargar audios (prueba)", downloadNoteAudios);
+      addMenuOption("Reducción de ruido del móvil: " + (getNoiseSuppression() ? "sí" : "no") + " (prueba)", function(){
+        var on = !getNoiseSuppression();
+        setNoiseSuppression(on);
+        showToast("Reducción de ruido " + (on ? "activada" : "desactivada") + " para las próximas grabaciones");
+      });
       addMenuOption("Compartir", shareCurrentNote);
       addMenuOption("Exportar", exportCurrentNote);
       addMenuOption("Eliminar", deleteCurrentNote, true);
