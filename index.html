@@ -314,6 +314,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 }
 
 #editor-toolbar{
+  position:relative;
   flex-shrink:0;
   display:flex;align-items:center;gap:4px;
   padding:6px 20px calc(6px + env(safe-area-inset-bottom,0px));
@@ -331,6 +332,25 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   background:var(--topbar-dark);
   color:var(--date);
 }
+
+
+/* ── BLOQUES DE PÁRRAFO (estilo y alineación) ── */
+#note-body-input .p{margin:0 0 10px;min-height:1.55em;position:relative;}
+#note-body-input .p[data-a="center"]{text-align:center;}
+#note-body-input .p[data-a="right"]{text-align:right;}
+#note-body-input .p[data-t]{padding-left:30px;}
+#note-body-input > :not([data-t="num"]){counter-reset:n;}
+#note-body-input .p[data-t="num"]{counter-increment:n;}
+#note-body-input .p[data-t]::before{position:absolute;left:0;top:0;text-align:left;}
+#note-body-input .p[data-t="bullet"]::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--text);top:11px;left:9px;}
+#note-body-input .p[data-t="num"]::before{content:counter(n) ".";width:24px;color:var(--text-muted);}
+#note-body-input .p[data-t="check"]::before{content:"";box-sizing:border-box;width:20px;height:20px;top:5px;left:1px;border:1.6px solid var(--text-muted);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;color:#fff;}
+#note-body-input .p[data-t="check"][data-done]::before{content:"\2713";background:var(--brand);border-color:var(--brand);}
+#note-body-input .p[data-t="check"][data-done]{color:var(--text-muted);text-decoration:line-through;}
+.fmt-pop{position:absolute;bottom:calc(100% + 8px);background:var(--white);border-radius:14px;box-shadow:var(--shadow);padding:6px;display:flex;gap:2px;z-index:210;}
+.fmt-pop.hidden{display:none;}
+.fmt-pop button{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:10px;color:var(--text);font-size:16px;}
+.fmt-pop button.active{background:var(--topbar-dark);color:var(--date);}
 
 /* ── VENTANAS FLOTANTES (MODALES) ── */
 .modal-overlay{
@@ -527,8 +547,21 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     <button class="fmt-btn" id="fmt-bold" aria-label="Negrita"><b>B</b></button>
     <button class="fmt-btn" id="fmt-italic" aria-label="Cursiva"><i>I</i></button>
     <button class="fmt-btn" id="fmt-underline" aria-label="Subrayado"><u>S</u></button>
+    <button class="fmt-btn" id="fmt-para" aria-label="Estilo de párrafo"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg></button>
+    <button class="fmt-btn" id="fmt-align" aria-label="Alineación"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6H20M4 12H13M4 18H20"/></svg></button>
     <button class="fmt-btn" id="fmt-image" aria-label="Insertar imagen">&#128247;</button>
     <button class="fmt-btn" id="fmt-audio" aria-label="Grabar audio">&#127908;</button>
+
+    <div class="fmt-pop hidden" id="pop-para">
+      <button data-t="check" aria-label="Lista de tareas"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12.5l3 3 5-6"/></svg></button>
+      <button data-t="bullet" aria-label="Viñetas"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.5" fill="currentColor"/><path d="M12 12h8"/></svg></button>
+      <button data-t="num" aria-label="Numeración"><b>1.</b></button>
+    </div>
+    <div class="fmt-pop hidden" id="pop-align">
+      <button data-a="left" aria-label="Izquierda"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6H20M4 12H13M4 18H20"/></svg></button>
+      <button data-a="center" aria-label="Centro"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6H20M7 12H17M4 18H20"/></svg></button>
+      <button data-a="right" aria-label="Derecha"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6H20M11 12H20M4 18H20"/></svg></button>
+    </div>
   </div>
 </div>
 
@@ -951,6 +984,83 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   fmtItalicBtn.addEventListener("click", function(){ document.execCommand("italic", false, null); updateToolbarState(); });
   fmtUnderlineBtn.addEventListener("click", function(){ document.execCommand("underline", false, null); updateToolbarState(); });
 
+  // ── ESTILO DE PÁRRAFO Y ALINEACIÓN (ventanitas de la barra) ──
+  var fmtParaBtn = document.getElementById("fmt-para");
+  var fmtAlignBtn = document.getElementById("fmt-align");
+  var popPara = document.getElementById("pop-para");
+  var popAlign = document.getElementById("pop-align");
+  function closePops(){ popPara.classList.add("hidden"); popAlign.classList.add("hidden"); }
+  function togglePop(pop, btn){
+    var wasHidden = pop.classList.contains("hidden");
+    closePops();
+    if(!wasHidden) return;
+    pop.classList.remove("hidden");
+    var left = btn.offsetLeft + btn.offsetWidth / 2 - pop.offsetWidth / 2;
+    pop.style.left = Math.max(8, left) + "px";
+  }
+  function selectedBlocks(){
+    wrapLoose();
+    var sel = window.getSelection();
+    if(!sel || !sel.rangeCount || !bodyInput.contains(sel.anchorNode)) return [];
+    var r = sel.getRangeAt(0);
+    var a = topBlock(r.startContainer), b = topBlock(r.endContainer), out = [];
+    if(!a){
+      if(!bodyInput.firstChild){
+        var nb = newBlock(); nb.innerHTML = "<br>"; bodyInput.appendChild(nb);
+        placeCaret(nb, 0); return [nb];
+      }
+      return out;
+    }
+    for(var n = a; n; n = n.nextElementSibling){
+      if(isPlainBlock(n)) out.push(n);
+      if(n === b) break;
+    }
+    return out;
+  }
+  function refreshBlockButtons(){
+    var sel = window.getSelection();
+    var blk = (sel && sel.rangeCount && bodyInput.contains(sel.anchorNode)) ? topBlock(sel.anchorNode) : null;
+    var t = blk ? blk.getAttribute("data-t") : null;
+    var al = blk ? blk.getAttribute("data-a") : null;
+    fmtParaBtn.classList.toggle("active", !!t);
+    fmtAlignBtn.classList.toggle("active", !!al && al !== "left");
+    Array.prototype.forEach.call(popPara.querySelectorAll("button"), function(x){ x.classList.toggle("active", x.getAttribute("data-t") === t); });
+    Array.prototype.forEach.call(popAlign.querySelectorAll("button"), function(x){ x.classList.toggle("active", x.getAttribute("data-a") === (al || "left")); });
+  }
+  document.addEventListener("selectionchange", function(){
+    if(document.activeElement === bodyInput) refreshBlockButtons();
+  });
+  [fmtParaBtn, fmtAlignBtn].concat(Array.prototype.slice.call(popPara.querySelectorAll("button")), Array.prototype.slice.call(popAlign.querySelectorAll("button"))).forEach(function(btn){
+    btn.addEventListener("pointerdown", function(e){ e.preventDefault(); });
+  });
+  fmtParaBtn.addEventListener("click", function(){ refreshBlockButtons(); togglePop(popPara, fmtParaBtn); });
+  fmtAlignBtn.addEventListener("click", function(){ refreshBlockButtons(); togglePop(popAlign, fmtAlignBtn); });
+  Array.prototype.forEach.call(popPara.querySelectorAll("button"), function(btn){
+    btn.addEventListener("click", function(){
+      var t = btn.getAttribute("data-t");
+      var blocks = selectedBlocks();
+      var allSame = blocks.length > 0 && blocks.every(function(b){ return b.getAttribute("data-t") === t; });
+      blocks.forEach(function(b){
+        b.removeAttribute("data-done");
+        if(allSame) b.removeAttribute("data-t"); else b.setAttribute("data-t", t);
+      });
+      refreshBlockButtons(); closePops();
+    });
+  });
+  Array.prototype.forEach.call(popAlign.querySelectorAll("button"), function(btn){
+    btn.addEventListener("click", function(){
+      var a = btn.getAttribute("data-a");
+      selectedBlocks().forEach(function(b){
+        if(a === "left") b.removeAttribute("data-a"); else b.setAttribute("data-a", a);
+      });
+      refreshBlockButtons(); closePops();
+    });
+  });
+  document.addEventListener("pointerdown", function(e){
+    if(!editorToolbar.contains(e.target)) closePops();
+  });
+  bodyInput.addEventListener("blur", closePops);
+
   // ── INSERTAR IMAGEN EN EL CUERPO DE LA NOTA (galería o cámara) ──
   var fmtImageBtn = document.getElementById("fmt-image");
   var modalImageSource = document.getElementById("modal-image-source");
@@ -1348,53 +1458,133 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       node.parentNode.replaceChild(frag, node);
     });
   }
-  // Tecla Enter: insertar un bloque "espaciador" con una altura fija en
-  // píxeles (en vez de un <br> con letra pequeña: la altura de una línea
-  // vacía basada en el tamaño de letra de un <br> no se calcula de forma
-  // fiable en todos los navegadores). Al ser un bloque, ya separa el
-  // párrafo por sí solo — no hace falta un <br> adicional.
-  bodyInput.addEventListener("keydown", function(e){
-    if(e.key === "Enter"){
-      e.preventDefault();
-      var sel = window.getSelection();
-      var spacer = null;
-      if(sel && sel.rangeCount){
-        var range = sel.getRangeAt(0);
-        range.deleteContents();
-        spacer = document.createElement("div");
-        spacer.className = "p-break-spacer";
-        spacer.setAttribute("contenteditable", "false");
-        range.insertNode(spacer);
-        range.setStartAfter(spacer);
-        range.setEndAfter(spacer);
-        sel.removeAllRanges();
-        sel.addRange(range);
+  // ── BLOQUES DE PÁRRAFO ──
+  // Cada párrafo es un <div class="p">; el estilo (checklist/viñeta/número)
+  // va en data-t y la alineación en data-a. Enter crea un bloque nuevo que
+  // hereda ambos; Mayús+Enter es un salto de línea dentro del mismo párrafo.
+  function isBlockEl(n){
+    return n.nodeType === 1 && (n.tagName === "DIV" || n.tagName === "IMG" || n.classList.contains("audio-clip"));
+  }
+  function isPlainBlock(n){
+    return n && n.nodeType === 1 && n.tagName === "DIV" && !n.classList.contains("audio-clip");
+  }
+  function topBlock(node){
+    while(node && node !== bodyInput && node.parentNode !== bodyInput) node = node.parentNode;
+    return (node && node !== bodyInput && node.nodeType === 1) ? node : null;
+  }
+  function newBlock(){
+    var d = document.createElement("div");
+    d.className = "p";
+    return d;
+  }
+  function blockIsEmpty(blk){
+    return !blk.textContent.replace(/\u200B/g, "") && !blk.querySelector("img,.audio-clip");
+  }
+  function placeCaret(node, offset){
+    var r = document.createRange();
+    r.setStart(node, offset); r.collapse(true);
+    var sel = window.getSelection();
+    sel.removeAllRanges(); sel.addRange(r);
+  }
+  // Envuelve en bloques cualquier texto/inline suelto en el nivel superior
+  // (lo que el teclado escribe cuando la nota está vacía, o un pegado).
+  function wrapLoose(){
+    var sel = window.getSelection();
+    var r = (sel && sel.rangeCount && bodyInput.contains(sel.anchorNode)) ? sel.getRangeAt(0) : null;
+    var sc = r && r.startContainer, so = r && r.startOffset, ec = r && r.endContainer, eo = r && r.endOffset;
+    var cur = null, changed = false;
+    Array.prototype.slice.call(bodyInput.childNodes).forEach(function(n){
+      if(n.nodeType === 1 && n.classList.contains("p-break-spacer")){ bodyInput.removeChild(n); cur = null; changed = true; return; }
+      if(isBlockEl(n)){
+        cur = null;
+        if(isPlainBlock(n) && !n.classList.contains("p")) n.classList.add("p");
+        return;
       }
-      // Como el salto lo insertamos nosotros (en vez del Enter nativo del
-      // teclado), el navegador no hace su scroll automático de "llevar el
-      // cursor a la vista". Lo replicamos a mano, midiendo directamente el
-      // elemento "spacer" que acabamos de insertar (en vez de la posición
-      // del cursor): justo al lado de un elemento no editable, el navegador
-      // a veces no puede calcular la posición del cursor y, si el punto y
-      // aparte se inserta en medio del texto (no al final), esto hacía que
-      // la pantalla saltara por error al final de toda la nota.
-      requestAnimationFrame(function(){
-        var rect = spacer ? spacer.getBoundingClientRect() : null;
-        if(rect){
-          var boxRect = bodyInput.getBoundingClientRect();
-          if(rect.bottom > boxRect.bottom - 4){
-            bodyInput.scrollTop += (rect.bottom - boxRect.bottom) + 40;
-          }
+      if(!cur){ cur = newBlock(); bodyInput.insertBefore(cur, n); }
+      cur.appendChild(n); changed = true;
+    });
+    if(changed && r){
+      try{
+        var nr = document.createRange();
+        nr.setStart(sc, so); nr.setEnd(ec, eo);
+        sel.removeAllRanges(); sel.addRange(nr);
+      }catch(err){}
+    }
+  }
+  function scrollBlockIntoView(el){
+    requestAnimationFrame(function(){
+      var rect = el.getBoundingClientRect();
+      var boxRect = bodyInput.getBoundingClientRect();
+      if(rect.bottom > boxRect.bottom - 4) bodyInput.scrollTop += (rect.bottom - boxRect.bottom) + 40;
+    });
+  }
+  bodyInput.addEventListener("keydown", function(e){
+    var sel = window.getSelection();
+    if(e.key === "Backspace" && sel && sel.rangeCount && sel.isCollapsed){
+      // Backspace al inicio de un párrafo con estilo: quita el estilo primero.
+      var bk = topBlock(sel.anchorNode);
+      if(bk && bk.getAttribute("data-t")){
+        var pre = document.createRange();
+        pre.selectNodeContents(bk);
+        pre.setEnd(sel.anchorNode, sel.anchorOffset);
+        if(!pre.toString().replace(/\u200B/g, "") && !pre.cloneContents().querySelector("img,.audio-clip")){
+          e.preventDefault();
+          bk.removeAttribute("data-t"); bk.removeAttribute("data-done");
+          refreshBlockButtons();
+          return;
         }
-      });
+      }
+    }
+    if(e.key !== "Enter") return;
+    e.preventDefault();
+    if(e.shiftKey){ document.execCommand("insertLineBreak"); return; }
+    wrapLoose();
+    if(!sel.rangeCount) return;
+    var range = sel.getRangeAt(0);
+    range.deleteContents();
+    var blk = topBlock(range.startContainer);
+    var nb = newBlock();
+    if(!blk || !isPlainBlock(blk) || blk.classList.contains("audio-clip")){
+      nb.innerHTML = "<br>";
+      if(blk) blk.parentNode.insertBefore(nb, blk.nextSibling); else bodyInput.appendChild(nb);
+      placeCaret(nb, 0); scrollBlockIntoView(nb);
+      return;
+    }
+    if(blk.getAttribute("data-t") && blockIsEmpty(blk)){
+      // Enter en un elemento de lista vacío: sale de la lista.
+      blk.removeAttribute("data-t"); blk.removeAttribute("data-done");
+      refreshBlockButtons();
+      return;
+    }
+    var tail = document.createRange();
+    tail.selectNodeContents(blk);
+    tail.setStart(range.startContainer, range.startOffset);
+    nb.appendChild(tail.extractContents());
+    if(blk.getAttribute("data-t")) nb.setAttribute("data-t", blk.getAttribute("data-t"));
+    if(blk.getAttribute("data-a")) nb.setAttribute("data-a", blk.getAttribute("data-a"));
+    if(blockIsEmpty(nb)) nb.innerHTML = "<br>";
+    if(blockIsEmpty(blk) && !blk.querySelector("br")) blk.innerHTML = "<br>";
+    blk.parentNode.insertBefore(nb, blk.nextSibling);
+    placeCaret(nb, 0); scrollBlockIntoView(nb);
+    refreshBlockButtons();
+  });
+  // Tocar la casilla de una tarea la marca/desmarca.
+  bodyInput.addEventListener("click", function(e){
+    var blk = topBlock(e.target);
+    if(blk && blk.getAttribute("data-t") === "check" && e.clientX - blk.getBoundingClientRect().left < 30){
+      e.preventDefault();
+      if(blk.hasAttribute("data-done")) blk.removeAttribute("data-done"); else blk.setAttribute("data-done", "1");
     }
   });
   // Si el usuario borra todo el contenido, algunos navegadores dejan un <br> suelto;
   // lo limpiamos para que vuelva a verse el placeholder.
   bodyInput.addEventListener("input", function(){
-    if(bodyInput.innerHTML === "<br>" || bodyInput.innerHTML === "<div><br></div>"){
+    var h = bodyInput.innerHTML;
+    if(h === "<br>" || h === "<div><br></div>" || h === '<div class="p"><br></div>'){
       bodyInput.innerHTML = "";
+      return;
     }
+    wrapLoose();
   });
   bodyInput.addEventListener("blur", relinkifyBodyNow);
 
@@ -1420,6 +1610,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
         // restaura el HTML tal cual, tal y como se guardó.
         bodyInput.innerHTML = note.bodyHtml;
         hydrateAudioClips(bodyInput);
+        wrapLoose();
       } else {
         setBodyText(note.body || "");
       }
