@@ -1548,7 +1548,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     var mime = (rec.recorder && rec.recorder.mimeType) || "audio/webm";
     var duration = (Date.now() - rec.startedAt) / 1000;
     var chunks = rec.chunks;
-    var rawChunks = rec.rawChunks, rawDone = rec.rawDone, nsUsed = rec.ns;
+    var rawChunks = rec.rawChunks, rawDone = rec.rawDone, nsUsed = rec.ns, diag = rec.diag || "";
     endRecordingCleanup();
     if(discard || !chunks.length) return;
     var blob = new Blob(chunks, {type: mime});
@@ -1556,12 +1556,32 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     // PRUEBA: junto a la grabación procesada se guarda una copia original
     // (sin ecualizar) para poder analizar las dos. Se quitará después.
     (rawDone || Promise.resolve()).then(function(){
-      var record = {id: id, blob: blob, mime: mime, duration: duration, createdAt: Date.now(), ns: nsUsed};
+      var record = {id: id, blob: blob, mime: mime, duration: duration, createdAt: Date.now(), ns: nsUsed, diag: diag};
       if(rawChunks && rawChunks.length) record.rawBlob = new Blob(rawChunks, {type: mime});
       return idbStorePut(AUDIO_STORE, id, record);
     })
       .then(function(){ insertAudioClip(id, duration); })
       .catch(function(){ alert("No se pudo guardar la grabación."); });
+  }
+  // Micrófono "limpio": se piden los efectos de llamada desactivados de forma
+  // estricta (exact), para que el móvil no use el modo llamada, que recorta los
+  // agudos a 8 kHz y deja la voz metálica. Si el móvil no admite alguna de
+  // estas peticiones, se vuelve al modo sencillo de antes.
+  function openMic(nsOn){
+    var strict = {audio: {
+      echoCancellation: {exact: false},
+      autoGainControl: {exact: false},
+      noiseSuppression: {exact: !!nsOn},
+      voiceIsolation: false,
+      channelCount: {ideal: 1},
+      sampleRate: {ideal: 48000},
+      sampleSize: {ideal: 16}
+    }};
+    var plain = {audio: {echoCancellation: false, autoGainControl: false, noiseSuppression: !!nsOn, channelCount: 1}};
+    return navigator.mediaDevices.getUserMedia(strict).catch(function(err){
+      if(err && (err.name === "NotAllowedError" || err.name === "SecurityError")) throw err;
+      return navigator.mediaDevices.getUserMedia(plain);
+    });
   }
   fmtAudioBtn.addEventListener("pointerdown", function(e){ e.preventDefault(); });
   fmtAudioBtn.addEventListener("click", function(){
@@ -1581,14 +1601,15 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     // llamadas, dejan la voz con sonido "de lata"); se mantiene la reducción
     // de ruido. Mono y 64 kbps: buena calidad de voz con archivos ligeros.
     var nsOn = getNoiseSuppression();
-    navigator.mediaDevices.getUserMedia({audio: {
-      echoCancellation: false,
-      autoGainControl: false,
-      noiseSuppression: nsOn,
-      channelCount: 1
-    }}).then(function(stream){
+    openMic(nsOn).then(function(stream){
       var mime = pickAudioMime();
-      var opts = {audioBitsPerSecond: 64000};
+      try{
+        var st = stream.getAudioTracks()[0].getSettings();
+        rec.diag = "ec" + (st.echoCancellation ? 1 : 0) + "agc" + (st.autoGainControl ? 1 : 0) +
+          "ns" + (st.noiseSuppression ? 1 : 0) + "-sr" + (st.sampleRate || "x") +
+          "-ctx" + (ctx ? Math.round(ctx.sampleRate) : "x");
+      }catch(e3){ rec.diag = ""; }
+      var opts = {audioBitsPerSecond: 96000};
       if(mime) opts.mimeType = mime;
       var recStream = stream;
       rec.ctx = null;
@@ -1664,6 +1685,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
           if(!record) return;
           var ext = audioExt(record.mime), n = i + 1;
           var tag = record.ns === true ? "-ruido-si" : (record.ns === false ? "-ruido-no" : "");
+          if(record.diag) tag += "-" + record.diag;
           files.push({blob: record.blob, name: "notematic-audio" + n + "-procesado" + tag + "." + ext});
           if(record.rawBlob) files.push({blob: record.rawBlob, name: "notematic-audio" + n + "-original" + tag + "." + ext});
         });
