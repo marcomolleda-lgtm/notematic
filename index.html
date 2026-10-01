@@ -350,6 +350,12 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 #note-body-input .p[data-t="check"][data-done]{color:var(--text-muted);text-decoration:line-through;}
 .fmt-pop{position:absolute;bottom:calc(100% + 8px);background:var(--white);border-radius:14px;box-shadow:var(--shadow);padding:6px;display:flex;gap:2px;z-index:210;}
 .fmt-pop.hidden{display:none;}
+#editor-toolbar #fmt-hl{margin-left:auto;}
+.fmt-pop .hl-swatch{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:10px;}
+.fmt-pop .hl-swatch i{display:block;width:26px;height:26px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1px rgba(60,50,30,0.14);}
+.fmt-pop .hl-swatch.active{background:var(--topbar-dark);}
+.fmt-pop .hl-swatch.active i{box-shadow:inset 0 0 0 1px rgba(60,50,30,0.14),0 0 0 2px var(--white),0 0 0 3.5px var(--text);}
+#note-body-input span[style*="background-color"]{border-radius:3px;-webkit-box-decoration-break:clone;box-decoration-break:clone;}
 .fmt-pop button{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:10px;color:var(--text);font-size:16px;}
 .fmt-pop button.active{background:var(--topbar-dark);color:var(--date);}
 
@@ -614,6 +620,12 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     <button class="fmt-btn" id="fmt-underline" aria-label="Subrayado"><span class="ico ico-s"></span></button>
     <button class="fmt-btn" id="fmt-para" aria-label="Estilo de párrafo"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg></button>
     <button class="fmt-btn" id="fmt-align" aria-label="Alineación"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6H20M4 12H13M4 18H20"/></svg></button>
+    <button class="fmt-btn" id="fmt-hl" aria-label="Resaltar texto"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l6 6"/><path d="M14.5 5.5l4 4-7.5 7.5-4-4z"/><path d="M7 13l-1.5 4.5L9 17"/><path d="M4 21h8"/></svg></button>
+    <div class="fmt-pop hidden" id="pop-hl">
+      <button class="hl-swatch" data-c="#fbe58a" aria-label="Amarillo" style="--c:#fbe58a"><i></i></button>
+      <button class="hl-swatch" data-c="#d9c8f2" aria-label="Violeta" style="--c:#d9c8f2"><i></i></button>
+      <button class="hl-swatch" data-c="#bfe3b4" aria-label="Verde" style="--c:#bfe3b4"><i></i></button>
+    </div>
     <div class="fmt-pop hidden" id="pop-para">
       <button data-t="check" aria-label="Lista de tareas"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12.5l3 3 5-6"/></svg></button>
       <button data-t="bullet" aria-label="Viñetas"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.5" fill="currentColor"/><path d="M12 12h8"/></svg></button>
@@ -1131,15 +1143,60 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   var fmtAlignBtn = document.getElementById("fmt-align");
   var popPara = document.getElementById("pop-para");
   var popAlign = document.getElementById("pop-align");
-  function closePops(){ popPara.classList.add("hidden"); popAlign.classList.add("hidden"); }
+  var fmtHlBtn = document.getElementById("fmt-hl");
+  var popHl = document.getElementById("pop-hl");
+  function closePops(){ popPara.classList.add("hidden"); popAlign.classList.add("hidden"); popHl.classList.add("hidden"); }
   function togglePop(pop, btn){
     var wasHidden = pop.classList.contains("hidden");
     closePops();
     if(!wasHidden) return;
     pop.classList.remove("hidden");
     var left = btn.offsetLeft + btn.offsetWidth / 2 - pop.offsetWidth / 2;
-    pop.style.left = Math.max(8, left) + "px";
+    var maxLeft = editorToolbar.clientWidth - pop.offsetWidth - 8;
+    pop.style.left = Math.max(8, Math.min(left, maxLeft)) + "px";
   }
+
+  // ── ROTULADOR (resaltado de texto en tres colores) ──
+  function rgbToHex(rgb){
+    var m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(rgb || "");
+    if(!m) return "";
+    return "#" + [m[1], m[2], m[3]].map(function(n){ return ("0" + parseInt(n, 10).toString(16)).slice(-2); }).join("");
+  }
+  function currentHighlight(){
+    try{ return rgbToHex(document.queryCommandValue("hiliteColor")); }catch(e){ return ""; }
+  }
+  function refreshHighlightButtons(){
+    var cur = currentHighlight();
+    var any = false;
+    Array.prototype.forEach.call(popHl.querySelectorAll("button"), function(b){
+      var on = b.getAttribute("data-c") === cur;
+      if(on) any = true;
+      b.classList.toggle("active", on);
+    });
+    fmtHlBtn.classList.toggle("active", any);
+  }
+  function applyHighlight(color){
+    var sel = window.getSelection();
+    if(!sel || !sel.rangeCount || !bodyInput.contains(sel.anchorNode)) return;
+    // Si ya tiene ese mismo color, al pulsarlo otra vez se quita el resaltado
+    var remove = currentHighlight() === color;
+    try{
+      document.execCommand("styleWithCSS", false, true);
+      document.execCommand("hiliteColor", false, remove ? "transparent" : color);
+    }catch(e){}
+    try{ document.execCommand("styleWithCSS", false, false); }catch(e){}
+    refreshHighlightButtons();
+  }
+  document.addEventListener("selectionchange", function(){
+    if(document.activeElement === bodyInput) refreshHighlightButtons();
+  });
+  [fmtHlBtn].concat(Array.prototype.slice.call(popHl.querySelectorAll("button"))).forEach(function(btn){
+    btn.addEventListener("pointerdown", function(e){ e.preventDefault(); });
+  });
+  fmtHlBtn.addEventListener("click", function(){ refreshHighlightButtons(); togglePop(popHl, fmtHlBtn); });
+  Array.prototype.forEach.call(popHl.querySelectorAll("button"), function(btn){
+    btn.addEventListener("click", function(){ applyHighlight(btn.getAttribute("data-c")); closePops(); });
+  });
   function selectedBlocks(){
     wrapLoose();
     var sel = window.getSelection();
