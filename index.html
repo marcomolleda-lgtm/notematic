@@ -1374,6 +1374,76 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     var t = clip.querySelector(".audio-time");
     if(t) t.setAttribute("data-t", formatTime(parseFloat(clip.getAttribute("data-duration")) || 0));
   }
+  // Volumen de las grabaciones hechas con la grabadora del móvil: salen bajas
+  // (unos -24 dB), así que al reproducirlas se les sube la ganancia hasta un
+  // nivel normal (~ -18 dB). El archivo guardado no se toca; la ganancia se
+  // mide una sola vez y se recuerda. Un limitador suave evita que los picos
+  // distorsionen.
+  var playCtx = null;
+  function getPlayCtx(){
+    if(!playCtx){
+      var AC = window.AudioContext || window.webkitAudioContext;
+      playCtx = new AC();
+    }
+    return playCtx;
+  }
+  function softClipCurve(){
+    var n = 2048, c = new Float32Array(n), knee = 0.7, room = 1 - knee;
+    for(var i = 0; i < n; i++){
+      var x = (i / (n - 1)) * 2 - 1, ax = Math.abs(x);
+      var y = ax <= knee ? ax : knee + room * Math.tanh((ax - knee) / room);
+      c[i] = x < 0 ? -y : y;
+    }
+    return c;
+  }
+  function measureGainDb(blob){
+    return blob.arrayBuffer().then(function(buf){
+      return new Promise(function(res, rej){ getPlayCtx().decodeAudioData(buf, res, rej); });
+    }).then(function(ab){
+      var sr = ab.sampleRate, fr = Math.max(1, Math.round(0.05 * sr)), chs = [];
+      for(var c = 0; c < ab.numberOfChannels; c++) chs.push(ab.getChannelData(c));
+      var levels = [], maxDb = -200;
+      for(var i = 0; i + fr <= ab.length; i += fr){
+        var sum = 0;
+        for(var k = 0; k < fr; k++){
+          var v = 0;
+          for(var c2 = 0; c2 < chs.length; c2++) v += chs[c2][i + k];
+          v /= chs.length;
+          sum += v * v;
+        }
+        var ms = sum / fr, db = 10 * Math.log10(ms + 1e-12);
+        levels.push(ms);
+        if(db > maxDb) maxDb = db;
+      }
+      var acc = 0, cnt = 0;
+      for(var j = 0; j < levels.length; j++){
+        if(10 * Math.log10(levels[j] + 1e-12) > maxDb - 30){ acc += levels[j]; cnt++; }
+      }
+      if(!cnt) return 0;
+      var activeDb = 10 * Math.log10(acc / cnt + 1e-12);
+      return Math.max(0, Math.min(18, -18 - activeDb));
+    });
+  }
+  function gainForRecord(record, id){
+    if(record.diag !== "grabadora-movil") return Promise.resolve(0);
+    if(typeof record.gainDb === "number") return Promise.resolve(record.gainDb);
+    return measureGainDb(record.blob).then(function(g){
+      record.gainDb = g;
+      idbStorePut(AUDIO_STORE, id, record).catch(function(){});
+      return g;
+    }).catch(function(){ return 0; });
+  }
+  function attachPlaybackGain(audio, gdb){
+    if(!(gdb > 0.5)) return;
+    try{
+      var pc = getPlayCtx();
+      if(pc.state === "suspended" && pc.resume) pc.resume();
+      var srcNode = pc.createMediaElementSource(audio);
+      var gn = pc.createGain(); gn.gain.value = Math.pow(10, gdb / 20);
+      var sh = pc.createWaveShaper(); sh.curve = softClipCurve(); sh.oversample = "2x";
+      srcNode.connect(gn); gn.connect(sh); sh.connect(pc.destination);
+    }catch(e){}
+  }
   function stopAudioPlayback(){
     if(player.audio){ try{ player.audio.pause(); }catch(e){} }
     if(player.url) URL.revokeObjectURL(player.url);
@@ -1391,8 +1461,10 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     var dur = parseFloat(clip.getAttribute("data-duration")) || 0;
     idbStoreGet(AUDIO_STORE, id).then(function(record){
       if(!record){ alert("No se encontró esta grabación."); return; }
+      return gainForRecord(record, id).then(function(gdb){
       var url = URL.createObjectURL(record.blob);
       var audio = new Audio(url);
+      attachPlaybackGain(audio, gdb);
       player.audio = audio; player.clip = clip; player.url = url;
       audio.addEventListener("timeupdate", function(){
         if(player.audio !== audio) return;
@@ -1405,6 +1477,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       audio.addEventListener("ended", function(){ if(player.audio === audio) stopAudioPlayback(); });
       clip.classList.add("playing");
       audio.play().catch(function(){ stopAudioPlayback(); });
+      });
     }).catch(function(){ alert("No se pudo reproducir la grabación."); });
   }
   bodyInput.addEventListener("click", function(e){
