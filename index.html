@@ -1336,14 +1336,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   var modalRecord = document.getElementById("modal-record");
   var recordTimeEl = document.getElementById("record-time");
   var recordingActive = false;
-  // PRUEBA: reducción de ruido del móvil (desactivada por defecto).
-  function getNoiseSuppression(){
-    try{ return localStorage.getItem("nm_noise_suppression") === "1"; }catch(e){ return false; }
-  }
-  function setNoiseSuppression(on){
-    try{ localStorage.setItem("nm_noise_suppression", on ? "1" : "0"); }catch(e){}
-  }
-  var rec = {recorder:null, stream:null, ctx:null, chunks:[], startedAt:0, timer:null, discard:false, range:null, rawRecorder:null, rawChunks:[], rawDone:null};
+  var rec = {recorder:null, stream:null, ctx:null, chunks:[], startedAt:0, timer:null, discard:false, range:null};
 
   function formatTime(sec){
     sec = Math.max(0, Math.round(sec || 0));
@@ -1622,18 +1615,11 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     var mime = (rec.recorder && rec.recorder.mimeType) || "audio/webm";
     var duration = (Date.now() - rec.startedAt) / 1000;
     var chunks = rec.chunks;
-    var rawChunks = rec.rawChunks, rawDone = rec.rawDone, nsUsed = rec.ns, diag = rec.diag || "";
     endRecordingCleanup();
     if(discard || !chunks.length) return;
     var blob = new Blob(chunks, {type: mime});
     var id = uid();
-    // PRUEBA: junto a la grabación procesada se guarda una copia original
-    // (sin ecualizar) para poder analizar las dos. Se quitará después.
-    (rawDone || Promise.resolve()).then(function(){
-      var record = {id: id, blob: blob, mime: mime, duration: duration, createdAt: Date.now(), ns: nsUsed, diag: diag};
-      if(rawChunks && rawChunks.length) record.rawBlob = new Blob(rawChunks, {type: mime});
-      return idbStorePut(AUDIO_STORE, id, record);
-    })
+    idbStorePut(AUDIO_STORE, id, {id: id, blob: blob, mime: mime, duration: duration, createdAt: Date.now()})
       .then(function(){ insertAudioClip(id, duration); })
       .catch(function(){ alert("No se pudo guardar la grabación."); });
   }
@@ -1671,18 +1657,11 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       var AC = window.AudioContext || window.webkitAudioContext;
       if(AC){ ctx = new AC(); if(ctx.resume) ctx.resume(); }
     }catch(err){ ctx = null; }
-    // Sin cancelación de eco ni control automático de volumen (pensados para
-    // llamadas, dejan la voz con sonido "de lata"); se mantiene la reducción
-    // de ruido. Mono y 64 kbps: buena calidad de voz con archivos ligeros.
-    var nsOn = getNoiseSuppression();
-    openMic(nsOn).then(function(stream){
+    // Sin cancelación de eco, control automático de volumen ni reducción de
+    // ruido del móvil (pensados para llamadas, dejan la voz con sonido "de
+    // lata"). Mono y 96 kbps: buena calidad de voz con archivos ligeros.
+    openMic(false).then(function(stream){
       var mime = pickAudioMime();
-      try{
-        var st = stream.getAudioTracks()[0].getSettings();
-        rec.diag = "ec" + (st.echoCancellation ? 1 : 0) + "agc" + (st.autoGainControl ? 1 : 0) +
-          "ns" + (st.noiseSuppression ? 1 : 0) + "-sr" + (st.sampleRate || "x") +
-          "-ctx" + (ctx ? Math.round(ctx.sampleRate) : "x");
-      }catch(e3){ rec.diag = ""; }
       var opts = {audioBitsPerSecond: 96000};
       if(mime) opts.mimeType = mime;
       var recStream = stream;
@@ -1695,22 +1674,12 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       try{ recorder = new MediaRecorder(recStream, opts); }
       catch(err){ recorder = new MediaRecorder(recStream); }
       rec.recorder = recorder; rec.stream = stream; rec.chunks = []; rec.discard = false;
-      rec.rawRecorder = null; rec.rawChunks = []; rec.rawDone = null; rec.ns = nsOn;
-      try{
-        var rawOpts = {audioBitsPerSecond: 128000};
-        if(mime) rawOpts.mimeType = mime;
-        var rawRec = new MediaRecorder(stream, rawOpts);
-        rawRec.ondataavailable = function(ev){ if(ev.data && ev.data.size) rec.rawChunks.push(ev.data); };
-        rec.rawDone = new Promise(function(resolve){ rawRec.onstop = resolve; });
-        rec.rawRecorder = rawRec;
-      }catch(err){ rec.rawRecorder = null; rec.rawDone = null; }
       recorder.ondataavailable = function(ev){ if(ev.data && ev.data.size) rec.chunks.push(ev.data); };
       recorder.onstop = finishRecording;
       // Se quita el cursor para que su indicador no quede sobre la ventana
       window.getSelection().removeAllRanges();
       bodyInput.blur();
       recorder.start();
-      if(rec.rawRecorder){ try{ rec.rawRecorder.start(); }catch(err){ rec.rawRecorder = null; rec.rawDone = null; } }
       rec.startedAt = Date.now();
       recordingActive = true;
       recordTimeEl.textContent = "0:00";
@@ -1723,7 +1692,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       alert("No se pudo acceder al micrófono. Revisa el permiso del navegador.");
     });
   });
-  // PRUEBA: grabar con la grabadora del propio móvil (sonido completo, sin el
+  // Grabar con la grabadora del propio móvil (sonido completo, sin el
   // recorte de agudos del micrófono del navegador). Al terminar, el audio vuelve
   // a la nota como cualquier otra grabación.
   var audioSystemInput = document.getElementById("audio-system-input");
@@ -1739,7 +1708,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     var id = uid();
     var mime = file.type || "audio/mp4";
     function save(duration){
-      var record = {id: id, blob: file, mime: mime, duration: duration, createdAt: Date.now(), ns: null, diag: "grabadora-movil"};
+      var record = {id: id, blob: file, mime: mime, duration: duration, createdAt: Date.now(), diag: "grabadora-movil"};
       idbStorePut(AUDIO_STORE, id, record)
         .then(function(){ insertAudioClip(id, duration); })
         .catch(function(){ alert("No se pudo guardar la grabación."); });
@@ -1762,7 +1731,6 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     probe.src = url;
   });
   function stopBothRecorders(){
-    if(rec.rawRecorder && rec.rawRecorder.state !== "inactive"){ try{ rec.rawRecorder.stop(); }catch(err){} }
     if(rec.recorder && rec.recorder.state !== "inactive") rec.recorder.stop();
   }
   document.getElementById("record-stop").addEventListener("click", stopBothRecorders);
@@ -1770,51 +1738,6 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     rec.discard = true;
     stopBothRecorders();
   });
-
-  // PRUEBA: descarga las grabaciones de la nota abierta, cada una en dos
-  // archivos (procesada y original), para analizar y afinar el sonido.
-  function audioExt(mime){
-    mime = mime || "";
-    if(mime.indexOf("webm") !== -1) return "webm";
-    if(mime.indexOf("mp4") !== -1 || mime.indexOf("m4a") !== -1 || mime.indexOf("aac") !== -1) return "m4a";
-    if(mime.indexOf("mpeg") !== -1 || mime.indexOf("mp3") !== -1) return "mp3";
-    if(mime.indexOf("wav") !== -1) return "wav";
-    if(mime.indexOf("3gpp") !== -1) return "3gp";
-    if(mime.indexOf("amr") !== -1) return "amr";
-    if(mime.indexOf("ogg") !== -1) return "ogg";
-    return "audio";
-  }
-  function saveBlobAs(blob, filename){
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
-  }
-  function downloadNoteAudios(){
-    var clips = bodyInput.querySelectorAll(".audio-clip");
-    var files = [];
-    var chain = Promise.resolve();
-    Array.prototype.forEach.call(clips, function(clip, i){
-      chain = chain.then(function(){
-        return idbStoreGet(AUDIO_STORE, clip.getAttribute("data-audio-id")).then(function(record){
-          if(!record) return;
-          var ext = audioExt(record.mime), n = i + 1;
-          var tag = record.ns === true ? "-ruido-si" : (record.ns === false ? "-ruido-no" : "");
-          if(record.diag) tag += "-" + record.diag;
-          files.push({blob: record.blob, name: "notematic-audio" + n + "-procesado" + tag + "." + ext});
-          if(record.rawBlob) files.push({blob: record.rawBlob, name: "notematic-audio" + n + "-original" + tag + "." + ext});
-        });
-      });
-    });
-    chain.then(function(){
-      if(!files.length){ alert("No hay grabaciones que descargar."); return; }
-      files.forEach(function(f, k){ setTimeout(function(){ saveBlobAs(f.blob, f.name); }, k * 700); });
-      if(!files.some(function(f){ return /original/.test(f.name); })){
-        showToast("Estas grabaciones son anteriores: solo tienen la versión procesada");
-      }
-    }).catch(function(){ alert("No se pudieron descargar los audios."); });
-  }
 
   // ── AUTO-ENLACE DE URLS Y CORREOS ──
   var LINK_RE = /((?:https?:\/\/|www\.)[^\s<]+[^\s<.,;:!?)\]]|[\w.+-]+@[\w-]+\.[\w.-]+)/g;
@@ -2342,13 +2265,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       var isFeatNow = isFeaturedNow();
       addMenuOption(isFeatNow ? "Nota destacada" : "Destacar nota", function(){ setFeaturedNow(!isFeatNow); });
       addMenuOption("No guardar cambios", closeEditorToList);
-      if(bodyInput.querySelector(".audio-clip")) addMenuOption("Descargar audios (prueba)", downloadNoteAudios);
-      addMenuOption("Reducción de ruido del móvil: " + (getNoiseSuppression() ? "sí" : "no") + " (prueba)", function(){
-        var on = !getNoiseSuppression();
-        setNoiseSuppression(on);
-        showToast("Reducción de ruido " + (on ? "activada" : "desactivada") + " para las próximas grabaciones");
-      });
-      addMenuOption("Grabar con la grabadora del móvil (prueba)", recordWithSystemApp);
+      addMenuOption("Grabar con la grabadora del móvil", recordWithSystemApp);
       addMenuOption("Compartir", shareCurrentNote);
       addMenuOption("Exportar", exportCurrentNote);
       addMenuOption("Eliminar", deleteCurrentNote, true);
@@ -2435,7 +2352,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       return idbStoreGet(AUDIO_STORE, id).then(function(record){
         if(!record) return null;
         return blobToDataURL(record.blob).then(function(dataUrl){
-          return {id: record.id, mime: record.mime, duration: record.duration, createdAt: record.createdAt, data: dataUrl};
+          return {id: record.id, mime: record.mime, duration: record.duration, createdAt: record.createdAt, diag: record.diag || null, gainDb: (typeof record.gainDb === "number" ? record.gainDb : null), data: dataUrl};
         });
       });
     })).then(function(list){
@@ -2492,7 +2409,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
         var audios = Array.isArray(parsed.audios) ? parsed.audios : [];
         Promise.all(audios.map(function(a){
           return fetch(a.data).then(function(r){ return r.blob(); }).then(function(blob){
-            return idbStorePut(AUDIO_STORE, a.id, {id: a.id, blob: blob, mime: a.mime, duration: a.duration, createdAt: a.createdAt || Date.now()});
+            return idbStorePut(AUDIO_STORE, a.id, {id: a.id, blob: blob, mime: a.mime, duration: a.duration, createdAt: a.createdAt || Date.now(), diag: a.diag || undefined, gainDb: (typeof a.gainDb === "number" ? a.gainDb : undefined)});
           });
         })).then(function(){
           alert("Importación completada.");
