@@ -1440,12 +1440,15 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       c.threshold.value = th; c.knee.value = knee; c.ratio.value = ratio;
       c.attack.value = att; c.release.value = rel;
       var g = ctx.createGain();
-      g.gain.value = Math.pow(10, (0.6 * (th + (-th) / ratio)) / 20);
+      var kt = th + knee;                       // fin de la zona suave
+      g.gain.value = Math.pow(10, (0.6 * (kt + (-kt) / ratio)) / 20);
       c.connect(g);
       return {input: c, output: g};
     }
     var src = ctx.createMediaStreamSource(stream);
     var hp = bq("highpass", 90, 0.7);              // corta ruido/golpes graves
+    var lev = ctx.createGain();                    // nivelador automático (ver abajo)
+    var an = ctx.createAnalyser(); an.fftSize = 2048;
     var low = bq("lowshelf", 250, null, -3);       // menos "cuerpo" grave
     var pres = bq("peaking", 3000, 0.8, 2.5);      // claridad de la voz
     var lp = bq("lowpass", 9500, 0.7);             // sin agudos donde solo hay ruido
@@ -1454,17 +1457,35 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     var dl = ctx.createDelay(0.05); dl.delayTime.value = 0.006; // compensa el retardo del compresor
     var lo1 = bq("lowpass", 4500, 0.7071), lo2 = bq("lowpass", 4500, 0.7071);
     var hi1 = bq("highpass", 4500, 0.7071), hi2 = bq("highpass", 4500, 0.7071);
-    var ds = dyn(-40, 6, 4, 0.001, 0.05);
+    var ds = dyn(-54, 6, 3.5, 0.001, 0.05);
     var sum = ctx.createGain();
     var cp = dyn(-24, 20, 2.5, 0.01, 0.25);        // iguala el volumen con suavidad
-    var makeup = ctx.createGain(); makeup.gain.value = 2.2;   // volumen general
+    var makeup = ctx.createGain(); makeup.gain.value = 2.5;   // volumen general
     var lm = dyn(-3, 0, 20, 0.002, 0.1);           // freno final de picos
     var dest = ctx.createMediaStreamDestination();
     try{ dest.channelCount = 1; }catch(e){}
-    src.connect(hp); hp.connect(low); low.connect(pres); pres.connect(lp);
+    src.connect(hp); hp.connect(lev); hp.connect(an); lev.connect(low); low.connect(pres); pres.connect(lp);
     lp.connect(dl); dl.connect(lo1); lo1.connect(lo2); lo2.connect(sum);
     lp.connect(hi1); hi1.connect(hi2); hi2.connect(ds.input); ds.output.connect(sum);
     sum.connect(cp.input); cp.output.connect(makeup); makeup.connect(lm.input); lm.output.connect(dest);
+    // Nivelador automático: mide el volumen medio de la voz (ignorando las
+    // pausas) y ajusta poco a poco la ganancia para que la grabación salga
+    // siempre al mismo nivel, hables más cerca o más lejos del micrófono.
+    var buf = new Float32Array(an.fftSize), levelDb = null, gainDb = 0, warm = 0;
+    var TARGET_DB = -26, GATE_DB = -50, MIN_GAIN = -8, MAX_GAIN = 24;
+    var timer = setInterval(function(){
+      if(ctx.state === "closed"){ clearInterval(timer); return; }
+      an.getFloatTimeDomainData(buf);
+      var sum = 0;
+      for(var i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+      var db = 20 * Math.log10(Math.sqrt(sum / buf.length) + 1e-9);
+      if(db < GATE_DB) return;                       // pausa: no se toca el nivel
+      warm++;
+      levelDb = (levelDb === null) ? db : levelDb + (db - levelDb) * (warm < 25 ? 0.25 : 0.05);
+      var want = Math.max(MIN_GAIN, Math.min(MAX_GAIN, TARGET_DB - levelDb));
+      gainDb += (want - gainDb) * 0.3;
+      lev.gain.setTargetAtTime(Math.pow(10, gainDb / 20), ctx.currentTime, 0.25);
+    }, 40);
     return dest.stream;
   }
   function endRecordingCleanup(){
