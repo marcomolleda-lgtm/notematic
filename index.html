@@ -659,6 +659,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 </div>
 <input type="file" id="image-insert-gallery" accept="image/*" style="display:none;"/>
 <input type="file" id="image-insert-camera" accept="image/*" capture="environment" style="display:none;"/>
+<input type="file" id="audio-system-input" accept="audio/*" capture style="display:none;"/>
 
 <!-- ═══════ MODAL: ELEGIR/GESTIONAR CARPETAS (uso general, desde icono carpeta) ═══════ -->
 <!-- Sin botón "Cerrar": tocar fuera de la ventana la cierra. -->
@@ -1649,6 +1650,44 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       alert("No se pudo acceder al micrófono. Revisa el permiso del navegador.");
     });
   });
+  // PRUEBA: grabar con la grabadora del propio móvil (sonido completo, sin el
+  // recorte de agudos del micrófono del navegador). Al terminar, el audio vuelve
+  // a la nota como cualquier otra grabación.
+  var audioSystemInput = document.getElementById("audio-system-input");
+  function recordWithSystemApp(){
+    var sel = window.getSelection();
+    rec.range = (sel && sel.rangeCount && bodyInput.contains(sel.anchorNode)) ? sel.getRangeAt(0).cloneRange() : null;
+    audioSystemInput.value = "";
+    audioSystemInput.click();
+  }
+  audioSystemInput.addEventListener("change", function(){
+    var file = audioSystemInput.files && audioSystemInput.files[0];
+    if(!file) return;
+    var id = uid();
+    var mime = file.type || "audio/mp4";
+    function save(duration){
+      var record = {id: id, blob: file, mime: mime, duration: duration, createdAt: Date.now(), ns: null, diag: "grabadora-movil"};
+      idbStorePut(AUDIO_STORE, id, record)
+        .then(function(){ insertAudioClip(id, duration); })
+        .catch(function(){ alert("No se pudo guardar la grabación."); });
+    }
+    // La duración se lee del propio archivo
+    var url = URL.createObjectURL(file), probe = new Audio(), done = false;
+    function finish(d){
+      if(done) return; done = true;
+      URL.revokeObjectURL(url);
+      save(isFinite(d) && d > 0 ? d : 0);
+    }
+    probe.preload = "metadata";
+    probe.addEventListener("loadedmetadata", function(){
+      if(isFinite(probe.duration)) finish(probe.duration);
+      else { probe.currentTime = 1e9; }              // truco para archivos sin duración declarada
+    });
+    probe.addEventListener("durationchange", function(){ if(isFinite(probe.duration) && probe.duration > 0) finish(probe.duration); });
+    probe.addEventListener("error", function(){ finish(0); });
+    setTimeout(function(){ finish(0); }, 4000);
+    probe.src = url;
+  });
   function stopBothRecorders(){
     if(rec.rawRecorder && rec.rawRecorder.state !== "inactive"){ try{ rec.rawRecorder.stop(); }catch(err){} }
     if(rec.recorder && rec.recorder.state !== "inactive") rec.recorder.stop();
@@ -1664,7 +1703,11 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   function audioExt(mime){
     mime = mime || "";
     if(mime.indexOf("webm") !== -1) return "webm";
-    if(mime.indexOf("mp4") !== -1) return "m4a";
+    if(mime.indexOf("mp4") !== -1 || mime.indexOf("m4a") !== -1 || mime.indexOf("aac") !== -1) return "m4a";
+    if(mime.indexOf("mpeg") !== -1 || mime.indexOf("mp3") !== -1) return "mp3";
+    if(mime.indexOf("wav") !== -1) return "wav";
+    if(mime.indexOf("3gpp") !== -1) return "3gp";
+    if(mime.indexOf("amr") !== -1) return "amr";
     if(mime.indexOf("ogg") !== -1) return "ogg";
     return "audio";
   }
@@ -2232,6 +2275,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
         setNoiseSuppression(on);
         showToast("Reducción de ruido " + (on ? "activada" : "desactivada") + " para las próximas grabaciones");
       });
+      addMenuOption("Grabar con la grabadora del móvil (prueba)", recordWithSystemApp);
       addMenuOption("Compartir", shareCurrentNote);
       addMenuOption("Exportar", exportCurrentNote);
       addMenuOption("Eliminar", deleteCurrentNote, true);
