@@ -314,6 +314,24 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   object-fit:cover;
 }
 
+/* ── IMÁGENES: descripción, ventanita y marco de selección ── */
+#note-body-input figure.img-fig{display:block;width:92%;margin:14px auto;}
+#note-body-input figure.img-fig img{width:100%;margin:0 auto;}
+#note-body-input figure.img-fig figcaption{margin:8px 6px 0;text-align:center;font-size:14.5px;line-height:1.4;color:var(--text-muted);white-space:pre-wrap;}
+#img-ring{position:fixed;pointer-events:none;border:2.5px solid var(--brand);border-radius:17px;z-index:205;}
+#img-pop{position:fixed;z-index:210;background:var(--white);border-radius:14px;box-shadow:var(--shadow);padding:6px;display:flex;gap:2px;}
+#img-pop button{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--text);}
+#img-pop button:active{background:var(--topbar-dark);}
+#img-pop button.danger{color:#b5473a;}
+#img-ring.hidden,#img-pop.hidden{display:none;}
+#modal-imgcap{align-items:flex-start;padding-top:12vh;}
+.cap-input{width:100%;resize:none;display:block;line-height:1.4;}
+.cap-swatches{display:flex;gap:12px;margin:16px 0 2px;}
+.cap-swatch{width:34px;height:34px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1px rgba(60,50,30,0.14);}
+.cap-swatch.active{box-shadow:inset 0 0 0 1px rgba(60,50,30,0.14),0 0 0 2px var(--white),0 0 0 3.5px var(--text);}
+.cap-fonts{display:flex;gap:8px;margin-top:16px;}
+.cap-font{flex:1;padding:11px 6px;border-radius:10px;background:var(--topbar-dark);font-size:16px;color:var(--text);}
+.cap-font.active{background:var(--brand);color:#fff;}
 #editor-toolbar{
   position:relative;
   flex-shrink:0;
@@ -782,6 +800,36 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   </div>
 </div>
 
+<div id="img-ring" class="hidden"></div>
+<div id="img-pop" class="hidden">
+  <button id="img-pop-cap" aria-label="Descripción"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 11h3"/><path d="M13 11h4"/><path d="M7 15h5"/><path d="M15 15h2"/></svg></button>
+  <button id="img-pop-del" class="danger" aria-label="Eliminar imagen"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+</div>
+<div class="modal-overlay hidden" id="modal-imgcap">
+  <div class="modal-box">
+    <div class="modal-title">Descripción</div>
+    <textarea class="new-folder-input cap-input" id="cap-input" rows="2" maxlength="200" placeholder="Escribe la descripción..."></textarea>
+    <div class="cap-swatches" id="cap-swatches">
+      <button class="cap-swatch" data-c="" aria-label="Gris" style="--c:var(--text-muted)"></button>
+      <button class="cap-swatch" data-c="#2658a1" aria-label="Azul" style="--c:#2658a1"></button>
+      <button class="cap-swatch" data-c="#5b7f4f" aria-label="Verde" style="--c:#5b7f4f"></button>
+      <button class="cap-swatch" data-c="#7a62a8" aria-label="Violeta" style="--c:#7a62a8"></button>
+      <button class="cap-swatch" data-c="#b5473a" aria-label="Terracota" style="--c:#b5473a"></button>
+    </div>
+    <div class="cap-fonts" id="cap-fonts">
+      <button class="cap-font" data-f="" style="font-family:'DM Sans',sans-serif">Normal</button>
+      <button class="cap-font" data-f="lora" style="font-family:'Lora',serif">Serif</button>
+      <button class="cap-font" data-f="lorai" style="font-family:'Lora',serif;font-style:italic">Cursiva</button>
+    </div>
+    <div class="modal-actions-row">
+      <button class="modal-link-btn" id="cap-remove" style="color:#b5473a;">Quitar</button>
+      <span style="display:flex;gap:22px;">
+        <button class="modal-link-btn" id="cap-cancel">Cancelar</button>
+        <button class="modal-link-btn" id="cap-ok" style="color:var(--brand);">Aceptar</button>
+      </span>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay hidden" id="modal-trash">
   <div class="modal-box">
     <div class="modal-title">Papelera</div>
@@ -1456,14 +1504,41 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     insertImageSrc(url);
   });
 
+  function readFileAsDataUrl(file){
+    return new Promise(function(resolve, reject){
+      var reader = new FileReader();
+      reader.onload = function(){ resolve(reader.result); };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+  // Las fotos de la galería se reducen a un máximo de 1600 px por el lado largo:
+  // se ven igual en el móvil y pesan mucho menos al guardarlas y copiarlas.
+  function shrinkImage(file){
+    if(/gif|svg/.test(file.type)) return readFileAsDataUrl(file);
+    return new Promise(function(resolve, reject){
+      var url = URL.createObjectURL(file), im = new Image();
+      im.onload = function(){
+        URL.revokeObjectURL(url);
+        var w = im.naturalWidth, h = im.naturalHeight, sc = Math.min(1, 1600 / Math.max(w, h));
+        if(sc === 1 && file.size < 400000){ readFileAsDataUrl(file).then(resolve, reject); return; }
+        var cv = document.createElement("canvas");
+        cv.width = Math.round(w * sc); cv.height = Math.round(h * sc);
+        var ctx = cv.getContext("2d");
+        var keepAlpha = /png|webp/.test(file.type);
+        if(!keepAlpha){ ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height); }
+        ctx.drawImage(im, 0, 0, cv.width, cv.height);
+        resolve(keepAlpha ? cv.toDataURL("image/png") : cv.toDataURL("image/jpeg", 0.85));
+      };
+      im.onerror = function(){ URL.revokeObjectURL(url); readFileAsDataUrl(file).then(resolve, reject); };
+      im.src = url;
+    });
+  }
   function insertImageFile(file){
     if(!file) return;
-    var reader = new FileReader();
-    reader.onload = function(){ insertImageSrc(reader.result); };
-    reader.onerror = function(){
+    shrinkImage(file).then(insertImageSrc).catch(function(){
       alert("No se pudo leer la imagen. Prueba con otra.");
-    };
-    reader.readAsDataURL(file);
+    });
   }
   function insertImageSrc(src){
       bodyInput.focus();
@@ -1492,6 +1567,143 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       sel.removeAllRanges();
       sel.addRange(range);
   }
+
+  // ── IMÁGENES: al tocarlas sale una ventanita con descripción y papelera ──
+  var imgPop = document.getElementById("img-pop");
+  var imgRing = document.getElementById("img-ring");
+  var imgPopTarget = null;
+  function imgFromTarget(t){
+    if(!t || !t.closest) return null;
+    var fig = t.closest("figure.img-fig");
+    if(fig) return fig.querySelector("img");
+    return t.tagName === "IMG" ? t : null;
+  }
+  function hideImgPop(){
+    imgPop.classList.add("hidden"); imgRing.classList.add("hidden"); imgPopTarget = null;
+  }
+  function showImgPop(img){
+    imgPopTarget = img;
+    var box = (img.closest("figure.img-fig") || img).getBoundingClientRect();
+    imgRing.style.left = (box.left - 4) + "px";
+    imgRing.style.top = (box.top - 4) + "px";
+    imgRing.style.width = (box.width + 8) + "px";
+    imgRing.style.height = (box.height + 8) + "px";
+    imgRing.classList.remove("hidden");
+    imgPop.classList.remove("hidden");
+    var pw = imgPop.offsetWidth, ph = imgPop.offsetHeight;
+    var vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    var left = Math.max(8, Math.min(window.innerWidth - pw - 8, box.left + box.width / 2 - pw / 2));
+    var top = box.top - ph - 10;
+    if(top < 8) top = Math.max(8, box.top + 10);      // si no cabe encima, dentro de la imagen
+    top = Math.min(top, vh - ph - 8);
+    imgPop.style.left = left + "px";
+    imgPop.style.top = top + "px";
+  }
+  bodyInput.addEventListener("click", function(e){
+    var img = imgFromTarget(e.target);
+    if(img){ e.preventDefault(); showImgPop(img); } else if(imgPopTarget){ hideImgPop(); }
+  });
+  bodyInput.addEventListener("scroll", hideImgPop, {passive:true});
+  bodyInput.addEventListener("input", hideImgPop);
+  window.addEventListener("resize", hideImgPop);
+  window.addEventListener("popstate", hideImgPop);
+  document.addEventListener("pointerdown", function(e){
+    if(imgPop.classList.contains("hidden")) return;
+    if(imgPop.contains(e.target) || imgFromTarget(e.target) === imgPopTarget) return;
+    hideImgPop();
+  }, true);
+
+  document.getElementById("img-pop-del").addEventListener("click", function(){
+    var img = imgPopTarget; if(!img || !img.parentNode) return;
+    var node = img.closest("figure.img-fig") || img;
+    var parent = node.parentNode, next = node.nextSibling;
+    parent.removeChild(node);
+    if(parent !== bodyInput && !parent.firstChild) parent.appendChild(document.createElement("br"));
+    bodyInput.dispatchEvent(new Event("input", {bubbles:true}));
+    hideImgPop();
+    showToast("Imagen eliminada", "Deshacer", function(){
+      if(!parent.isConnected) return;
+      var br = parent.lastChild;
+      if(br && br.nodeName === "BR" && parent !== bodyInput && parent.childNodes.length === 1) parent.removeChild(br);
+      parent.insertBefore(node, next && next.parentNode === parent ? next : null);
+      bodyInput.dispatchEvent(new Event("input", {bubbles:true}));
+    });
+  });
+
+  // Descripción bajo la imagen: texto, color y tipografía
+  var modalCap = document.getElementById("modal-imgcap");
+  var capInput = document.getElementById("cap-input");
+  var capRemoveBtn = document.getElementById("cap-remove");
+  var capTarget = null, capColor = "", capFont = "";
+  function paintCapChoices(){
+    Array.prototype.forEach.call(document.querySelectorAll("#cap-swatches .cap-swatch"), function(b){
+      b.classList.toggle("active", b.getAttribute("data-c") === capColor);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("#cap-fonts .cap-font"), function(b){
+      b.classList.toggle("active", b.getAttribute("data-f") === capFont);
+    });
+  }
+  function styleCaption(cap, color, font){
+    cap.style.color = color || "";
+    cap.style.fontFamily = font ? "'Lora',serif" : "";
+    cap.style.fontStyle = font === "lorai" ? "italic" : "";
+  }
+  document.getElementById("img-pop-cap").addEventListener("click", function(){
+    var img = imgPopTarget; if(!img) return;
+    var fig = img.closest("figure.img-fig"), cap = fig ? fig.querySelector("figcaption") : null;
+    capTarget = img;
+    capInput.value = cap ? cap.textContent : "";
+    capColor = fig ? (fig.getAttribute("data-cc") || "") : "";
+    capFont = fig ? (fig.getAttribute("data-cf") || "") : "";
+    capRemoveBtn.style.display = cap ? "" : "none";
+    paintCapChoices();
+    hideImgPop();
+    modalCap.classList.remove("hidden");
+    setTimeout(function(){ capInput.focus(); }, 60);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#cap-swatches .cap-swatch"), function(b){
+    b.addEventListener("click", function(){ capColor = b.getAttribute("data-c"); paintCapChoices(); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#cap-fonts .cap-font"), function(b){
+    b.addEventListener("click", function(){ capFont = b.getAttribute("data-f"); paintCapChoices(); });
+  });
+  function closeCapDialog(){ modalCap.classList.add("hidden"); capTarget = null; }
+  function removeCaption(img){
+    var fig = img.closest("figure.img-fig");
+    if(!fig) return;
+    fig.parentNode.insertBefore(img, fig);
+    fig.parentNode.removeChild(fig);
+  }
+  function applyCaption(){
+    var img = capTarget;
+    if(!img || !img.parentNode){ closeCapDialog(); return; }
+    var text = capInput.value.trim();
+    if(!text){ removeCaption(img); }
+    else{
+      var fig = img.closest("figure.img-fig");
+      if(!fig){
+        fig = document.createElement("figure");
+        fig.className = "img-fig";
+        fig.setAttribute("contenteditable", "false");
+        img.parentNode.insertBefore(fig, img);
+        fig.appendChild(img);
+      }
+      var cap = fig.querySelector("figcaption");
+      if(!cap){ cap = document.createElement("figcaption"); fig.appendChild(cap); }
+      cap.textContent = text;
+      fig.setAttribute("data-cc", capColor); fig.setAttribute("data-cf", capFont);
+      styleCaption(cap, capColor, capFont);
+    }
+    bodyInput.dispatchEvent(new Event("input", {bubbles:true}));
+    closeCapDialog();
+  }
+  document.getElementById("cap-ok").addEventListener("click", applyCaption);
+  document.getElementById("cap-cancel").addEventListener("click", closeCapDialog);
+  capRemoveBtn.addEventListener("click", function(){
+    if(capTarget && capTarget.parentNode){ removeCaption(capTarget); bodyInput.dispatchEvent(new Event("input", {bubbles:true})); }
+    closeCapDialog();
+  });
+  modalCap.addEventListener("click", function(e){ if(e.target === modalCap) closeCapDialog(); });
 
   imageInsertGallery.addEventListener("change", function(){
     insertImageFile(imageInsertGallery.files && imageInsertGallery.files[0]);
