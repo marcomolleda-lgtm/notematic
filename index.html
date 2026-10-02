@@ -326,12 +326,9 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 #img-ring.hidden,#img-pop.hidden{display:none;}
 #modal-imgcap{align-items:flex-start;padding-top:12vh;}
 .cap-input{width:100%;resize:none;display:block;line-height:1.4;}
-.cap-swatches{display:flex;gap:12px;margin:16px 0 2px;}
+.cap-swatches{display:flex;gap:14px;margin:16px 0 2px;}
 .cap-swatch{width:34px;height:34px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 1px rgba(60,50,30,0.14);}
 .cap-swatch.active{box-shadow:inset 0 0 0 1px rgba(60,50,30,0.14),0 0 0 2px var(--white),0 0 0 3.5px var(--text);}
-.cap-fonts{display:flex;gap:8px;margin-top:16px;}
-.cap-font{flex:1;padding:11px 6px;border-radius:10px;background:var(--topbar-dark);font-size:16px;color:var(--text);}
-.cap-font.active{background:var(--brand);color:#fff;}
 #editor-toolbar{
   position:relative;
   flex-shrink:0;
@@ -810,16 +807,9 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     <div class="modal-title">Descripción</div>
     <textarea class="new-folder-input cap-input" id="cap-input" rows="2" maxlength="200" placeholder="Escribe la descripción..."></textarea>
     <div class="cap-swatches" id="cap-swatches">
-      <button class="cap-swatch" data-c="" aria-label="Gris" style="--c:var(--text-muted)"></button>
-      <button class="cap-swatch" data-c="#2658a1" aria-label="Azul" style="--c:#2658a1"></button>
-      <button class="cap-swatch" data-c="#5b7f4f" aria-label="Verde" style="--c:#5b7f4f"></button>
-      <button class="cap-swatch" data-c="#7a62a8" aria-label="Violeta" style="--c:#7a62a8"></button>
-      <button class="cap-swatch" data-c="#b5473a" aria-label="Terracota" style="--c:#b5473a"></button>
-    </div>
-    <div class="cap-fonts" id="cap-fonts">
-      <button class="cap-font" data-f="" style="font-family:'DM Sans',sans-serif">Normal</button>
-      <button class="cap-font" data-f="lora" style="font-family:'Lora',serif">Serif</button>
-      <button class="cap-font" data-f="lorai" style="font-family:'Lora',serif;font-style:italic">Cursiva</button>
+      <button class="cap-swatch" data-c="" aria-label="Beige oscuro" style="--c:var(--text-muted)"></button>
+      <button class="cap-swatch" data-c="#2658a1" aria-label="Azul Notematic" style="--c:#2658a1"></button>
+      <button class="cap-swatch" data-c="#b5473a" aria-label="Rojo burdeos" style="--c:#b5473a"></button>
     </div>
     <div class="modal-actions-row">
       <button class="modal-link-btn" id="cap-remove" style="color:#b5473a;">Quitar</button>
@@ -1541,31 +1531,66 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     });
   }
   function insertImageSrc(src){
-      bodyInput.focus();
-      var sel = window.getSelection();
-      sel.removeAllRanges();
-      if(savedBodyRange){
-        sel.addRange(savedBodyRange);
-      } else {
-        var r = document.createRange();
-        r.selectNodeContents(bodyInput);
-        r.collapse(false);
-        sel.addRange(r);
+    bodyInput.focus();
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    if(savedBodyRange){
+      sel.addRange(savedBodyRange);
+    } else {
+      var r0 = document.createRange();
+      r0.selectNodeContents(bodyInput);
+      r0.collapse(false);
+      sel.addRange(r0);
+    }
+    wrapLoose();
+    var range = sel.rangeCount ? sel.getRangeAt(0) : null;
+    if(range) range.deleteContents();
+    // contenteditable="false": evita el borde/tiradores nativos de Chrome en imágenes
+    var img = document.createElement("img");
+    img.src = src;
+    img.setAttribute("contenteditable", "false");
+    var fig = document.createElement("figure");
+    fig.className = "img-fig"; fig.setAttribute("contenteditable", "false");
+    fig.appendChild(img);
+    var blk = range ? topBlock(range.startContainer) : null;
+    if(!blk){
+      var last = bodyInput.lastElementChild;
+      if(last && isPlainBlock(last) && blockIsEmpty(last)) blk = last;
+    }
+    var after;                         // párrafo donde queda el cursor, debajo de la imagen
+    if(!blk){
+      bodyInput.appendChild(fig);
+      after = newBlock(); after.innerHTML = "<br>"; bodyInput.appendChild(after);
+    } else if(!isPlainBlock(blk)){     // al lado de un audio u otra imagen
+      after = newBlock(); after.innerHTML = "<br>";
+      insertAfterNode(blk, fig); insertAfterNode(fig, after);
+    } else if(blockIsEmpty(blk)){      // línea vacía: la imagen ocupa su sitio y esa línea queda debajo
+      blk.parentNode.insertBefore(fig, blk);
+      blk.removeAttribute("data-t"); blk.removeAttribute("data-done");
+      if(!blk.firstChild) blk.innerHTML = "<br>";
+      after = blk;
+    } else {                           // texto delante y/o detrás: se parte el párrafo en el cursor
+      var tailR = document.createRange();
+      tailR.selectNodeContents(blk);
+      tailR.setStart(range.startContainer, range.startOffset);
+      after = newBlock();
+      after.appendChild(tailR.extractContents());
+      if(blockIsEmpty(after)) after.innerHTML = "<br>";
+      else {
+        if(blk.getAttribute("data-t")) after.setAttribute("data-t", blk.getAttribute("data-t"));
+        if(blk.getAttribute("data-a")) after.setAttribute("data-a", blk.getAttribute("data-a"));
       }
-      var img = document.createElement("img");
-      img.src = src;
-      // contenteditable="false": evita que Chrome muestre el borde/tiradores
-      // de selección y redimensionado nativos que aparecen en imágenes
-      // insertadas dentro de un campo editable.
-      img.setAttribute("contenteditable", "false");
-      var range = sel.getRangeAt(0);
-      range.deleteContents();
-      range.insertNode(img);
-      // Deja el cursor justo después de la imagen insertada
-      range.setStartAfter(img);
-      range.setEndAfter(img);
-      sel.removeAllRanges();
-      sel.addRange(range);
+      if(blockIsEmpty(blk)){           // el cursor estaba al principio: la imagen va encima del texto
+        blk.parentNode.insertBefore(fig, blk);
+        blk.parentNode.removeChild(blk);
+        insertAfterNode(fig, after);
+      } else {
+        insertAfterNode(blk, fig); insertAfterNode(fig, after);
+      }
+    }
+    placeCaret(after, 0);
+    scrollBlockIntoView(after);
+    savedBodyRange = null;
   }
 
   // ── IMÁGENES: al tocarlas sale una ventanita con descripción y papelera ──
@@ -1619,6 +1644,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     var parent = node.parentNode, next = node.nextSibling;
     parent.removeChild(node);
     if(parent !== bodyInput && !parent.firstChild) parent.appendChild(document.createElement("br"));
+    ensureTrailingBlock();
     bodyInput.dispatchEvent(new Event("input", {bubbles:true}));
     hideImgPop();
     showToast("Imagen eliminada", "Deshacer", function(){
@@ -1634,19 +1660,16 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   var modalCap = document.getElementById("modal-imgcap");
   var capInput = document.getElementById("cap-input");
   var capRemoveBtn = document.getElementById("cap-remove");
-  var capTarget = null, capColor = "", capFont = "";
+  var capTarget = null, capColor = "";
   function paintCapChoices(){
     Array.prototype.forEach.call(document.querySelectorAll("#cap-swatches .cap-swatch"), function(b){
       b.classList.toggle("active", b.getAttribute("data-c") === capColor);
     });
-    Array.prototype.forEach.call(document.querySelectorAll("#cap-fonts .cap-font"), function(b){
-      b.classList.toggle("active", b.getAttribute("data-f") === capFont);
-    });
   }
-  function styleCaption(cap, color, font){
+  function styleCaption(cap, color){
     cap.style.color = color || "";
-    cap.style.fontFamily = font ? "'Lora',serif" : "";
-    cap.style.fontStyle = font === "lorai" ? "italic" : "";
+    cap.style.fontFamily = "";      // la tipografía es siempre la normal de la nota
+    cap.style.fontStyle = "";
   }
   document.getElementById("img-pop-cap").addEventListener("click", function(){
     var img = imgPopTarget; if(!img) return;
@@ -1654,7 +1677,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     capTarget = img;
     capInput.value = cap ? cap.textContent : "";
     capColor = fig ? (fig.getAttribute("data-cc") || "") : "";
-    capFont = fig ? (fig.getAttribute("data-cf") || "") : "";
+    if(["", "#2658a1", "#b5473a"].indexOf(capColor) === -1) capColor = "";
     capRemoveBtn.style.display = cap ? "" : "none";
     paintCapChoices();
     hideImgPop();
@@ -1664,15 +1687,12 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   Array.prototype.forEach.call(document.querySelectorAll("#cap-swatches .cap-swatch"), function(b){
     b.addEventListener("click", function(){ capColor = b.getAttribute("data-c"); paintCapChoices(); });
   });
-  Array.prototype.forEach.call(document.querySelectorAll("#cap-fonts .cap-font"), function(b){
-    b.addEventListener("click", function(){ capFont = b.getAttribute("data-f"); paintCapChoices(); });
-  });
   function closeCapDialog(){ modalCap.classList.add("hidden"); capTarget = null; }
   function removeCaption(img){
     var fig = img.closest("figure.img-fig");
-    if(!fig) return;
-    fig.parentNode.insertBefore(img, fig);
-    fig.parentNode.removeChild(fig);
+    var cap = fig ? fig.querySelector("figcaption") : null;
+    if(cap) fig.removeChild(cap);
+    if(fig){ fig.removeAttribute("data-cc"); fig.removeAttribute("data-cf"); }
   }
   function applyCaption(){
     var img = capTarget;
@@ -1681,18 +1701,12 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     if(!text){ removeCaption(img); }
     else{
       var fig = img.closest("figure.img-fig");
-      if(!fig){
-        fig = document.createElement("figure");
-        fig.className = "img-fig";
-        fig.setAttribute("contenteditable", "false");
-        img.parentNode.insertBefore(fig, img);
-        fig.appendChild(img);
-      }
+      if(!fig){ fig = makeImgFigure(img); }
       var cap = fig.querySelector("figcaption");
       if(!cap){ cap = document.createElement("figcaption"); fig.appendChild(cap); }
       cap.textContent = text;
-      fig.setAttribute("data-cc", capColor); fig.setAttribute("data-cf", capFont);
-      styleCaption(cap, capColor, capFont);
+      fig.setAttribute("data-cc", capColor); fig.removeAttribute("data-cf");
+      styleCaption(cap, capColor);
     }
     bodyInput.dispatchEvent(new Event("input", {bubbles:true}));
     closeCapDialog();
@@ -2196,7 +2210,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   // va en data-t y la alineación en data-a. Enter crea un bloque nuevo que
   // hereda ambos; Mayús+Enter es un salto de línea dentro del mismo párrafo.
   function isBlockEl(n){
-    return n.nodeType === 1 && (n.tagName === "DIV" || n.tagName === "IMG" || n.classList.contains("audio-clip"));
+    return n.nodeType === 1 && (n.tagName === "DIV" || n.tagName === "IMG" || n.tagName === "FIGURE" || n.classList.contains("audio-clip"));
   }
   function isPlainBlock(n){
     return n && n.nodeType === 1 && n.tagName === "DIV" && !n.classList.contains("audio-clip");
@@ -2218,6 +2232,48 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     r.setStart(node, offset); r.collapse(true);
     var sel = window.getSelection();
     sel.removeAllRanges(); sel.addRange(r);
+  }
+  // Cada imagen vive en su propio bloque (<figure>), nunca dentro de un párrafo,
+  // y siempre hay un párrafo editable debajo. Así el cursor no se queda pegado
+  // a la foto, ni a su izquierda, ni arriba al tocar debajo de ella.
+  function makeImgFigure(img){
+    var fig = document.createElement("figure");
+    fig.className = "img-fig";
+    fig.setAttribute("contenteditable", "false");
+    if(img.parentNode) img.parentNode.insertBefore(fig, img);
+    fig.appendChild(img);
+    return fig;
+  }
+  function insertAfterNode(ref, node){ ref.parentNode.insertBefore(node, ref.nextSibling); }
+  function ensureTrailingBlock(){
+    var last = bodyInput.lastChild;
+    if(last && last.nodeType === 1 && (last.tagName === "FIGURE" || last.tagName === "IMG")){
+      var nb = newBlock(); nb.innerHTML = "<br>"; bodyInput.appendChild(nb);
+    }
+  }
+  // Notas antiguas: imágenes sueltas o metidas dentro de un párrafo → cada una en su bloque
+  function normalizeImages(){
+    Array.prototype.slice.call(bodyInput.querySelectorAll("img")).forEach(function(img){
+      if(img.closest("figure.img-fig")) return;
+      var blk = topBlock(img);
+      if(!blk) return;
+      if(blk === img){ makeImgFigure(img); return; }       // imagen suelta en el nivel superior
+      var fig = document.createElement("figure");
+      fig.className = "img-fig"; fig.setAttribute("contenteditable", "false");
+      var tailRange = document.createRange();
+      tailRange.setStartAfter(img);
+      tailRange.setEnd(blk, blk.childNodes.length);
+      var after = newBlock();
+      if(blk.getAttribute("data-t")) after.setAttribute("data-t", blk.getAttribute("data-t"));
+      if(blk.getAttribute("data-a")) after.setAttribute("data-a", blk.getAttribute("data-a"));
+      after.appendChild(tailRange.extractContents());
+      fig.appendChild(img);
+      insertAfterNode(blk, fig);
+      insertAfterNode(fig, after);
+      if(blockIsEmpty(after) && !after.querySelector("br")){ after.innerHTML = "<br>"; after.removeAttribute("data-t"); }
+      if(!blk.textContent.replace(/\u200B/g, "") && !blk.querySelector("img,.audio-clip")) blk.parentNode.removeChild(blk);
+    });
+    ensureTrailingBlock();
   }
   // Envuelve en bloques cualquier texto/inline suelto en el nivel superior
   // (lo que el teclado escribe cuando la nota está vacía, o un pegado).
@@ -2243,6 +2299,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
         sel.removeAllRanges(); sel.addRange(nr);
       }catch(err){}
     }
+    ensureTrailingBlock();
   }
   function scrollBlockIntoView(el){
     requestAnimationFrame(function(){
@@ -2347,6 +2404,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
         bodyInput.innerHTML = note.bodyHtml;
         hydrateAudioClips(bodyInput);
         wrapLoose();
+        normalizeImages();
       } else {
         setBodyText(note.body || "");
       }
