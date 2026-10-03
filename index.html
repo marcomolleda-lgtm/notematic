@@ -318,6 +318,66 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 #note-body-input figure.img-fig{display:block;width:92%;margin:14px auto;}
 #note-body-input figure.img-fig img{width:100%;margin:0 auto;}
 #note-body-input figure.img-fig figcaption{margin:8px 6px 0;text-align:center;font-size:14.5px;line-height:1.4;color:var(--text-muted);white-space:pre-wrap;}
+#draw-overlay{position:fixed;inset:0;z-index:400;background:#161514;display:flex;flex-direction:column;touch-action:none;user-select:none;-webkit-user-select:none;}
+#draw-overlay.hidden{display:none;}
+#draw-top{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 8px) 10px 8px;color:#fff;}
+.draw-ico{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;}
+.draw-ico:active{background:rgba(255,255,255,.14);}
+.draw-ico:disabled{opacity:.3;}
+#draw-undoredo{display:flex;gap:4px;}
+#draw-save{height:42px;padding:0 20px;border-radius:12px;background:var(--brand);color:#fff;font-weight:600;font-size:16px;}
+#draw-stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:6px 12px 130px;}
+#draw-wrap{position:relative;border-radius:10px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.5);touch-action:none;}
+#draw-wrap canvas{position:absolute;left:0;top:0;width:100%;height:100%;display:block;touch-action:none;}
+#draw-bar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 22px);background:var(--white);border-radius:18px;box-shadow:var(--shadow);padding:6px;display:flex;gap:4px;}
+.draw-tool{position:relative;width:54px;height:54px;border-radius:13px;display:flex;align-items:center;justify-content:center;color:var(--text);}
+.draw-tool.on{background:var(--topbar-dark);}
+.draw-cdot{position:absolute;right:7px;bottom:7px;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.28);}
+#draw-sub{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 22px + 66px + 12px);background:var(--white);border-radius:18px;box-shadow:var(--shadow);padding:16px 18px;display:flex;flex-direction:column;align-items:center;gap:14px;}
+#draw-sub.hidden{display:none;}
+#draw-colors,#draw-spray-colors,#draw-sizes{display:flex;gap:14px;align-items:center;}
+#draw-wrap canvas#draw-live,#draw-wrap canvas#draw-objs{pointer-events:none;}
+#draw-bar,#draw-sub{z-index:4;}
+#draw-bar.hidden{display:none;}
+#draw-textbar{position:absolute;z-index:4;left:6px;right:6px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);background:var(--white);border-radius:16px;box-shadow:var(--shadow);padding:7px 8px;display:flex;align-items:center;gap:4px;}
+#draw-textbar.hidden{display:none;}
+#draw-text-colors{flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:space-between;padding:0 4px;}
+#draw-textbar .draw-sw{width:22px;height:22px;flex:0 0 22px;}
+#draw-textbar .draw-sw.sel{box-shadow:0 0 0 2px #fff,0 0 0 3.5px var(--brand);}
+#draw-text-bold,#draw-text-alpha{width:34px;height:34px;flex:0 0 34px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--text);}
+#draw-text-bold{font-family:'DM Sans',sans-serif;font-weight:600;font-size:19px;line-height:1;}
+#draw-text-bold.on,#draw-text-alpha.on{background:var(--topbar-dark);box-shadow:inset 0 0 0 2px var(--brand);}
+#draw-alpha-pop{position:absolute;z-index:5;width:68px;height:250px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px + 46px + 8px);background:var(--white);border-radius:20px;box-shadow:var(--shadow);padding:12px 0 18px;display:flex;flex-direction:column;align-items:center;gap:10px;touch-action:none;}
+#draw-alpha-pop.hidden{display:none;}
+#draw-alpha-val{font-size:15px;font-weight:600;color:var(--text);line-height:1;}
+#draw-alpha-track{position:relative;flex:1;width:100%;margin:20px 0;touch-action:none;}
+#draw-alpha-track::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:12px;margin-left:-6px;border-radius:6px;background:rgba(0,0,0,.13);}
+#draw-alpha-fill{position:absolute;left:50%;bottom:0;width:12px;margin-left:-6px;border-radius:6px;background:var(--brand);}
+#draw-alpha-thumb{position:absolute;left:50%;width:36px;height:36px;margin:-18px 0 0 -18px;border-radius:50%;background:#fff;border:3px solid var(--brand);box-shadow:0 2px 6px rgba(0,0,0,.3);box-sizing:border-box;}
+#draw-text-done{width:32px;height:32px;flex:0 0 32px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;}
+.tb-sep{width:1px;height:22px;flex:0 0 1px;background:rgba(0,0,0,.14);}
+.tc-row{display:flex;gap:14px;align-items:center;}
+.draw-sz i.glyph{border-radius:0;background:none;font-style:normal;font-weight:700;line-height:1;color:var(--text);}
+#draw-sel{position:absolute;z-index:3;border:2px dashed #fff;border-radius:8px;box-shadow:0 0 0 1px rgba(0,0,0,.4);pointer-events:none;}
+#draw-sel.hidden{display:none;}
+#draw-sel button{position:absolute;width:32px;height:32px;border-radius:50%;pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.4);}
+#draw-sel-del{left:-16px;top:-16px;background:#fff;color:#b5473a;}
+#draw-sel-res{right:-16px;bottom:-16px;background:var(--brand);color:#fff;}
+#draw-inline{position:absolute;z-index:2;margin:0;border:none;outline:none;resize:none;overflow:hidden;white-space:pre;background:transparent;font-family:'DM Sans',sans-serif;font-weight:600;text-align:center;box-sizing:border-box;border-radius:8px;user-select:text;-webkit-user-select:text;-webkit-appearance:none;}
+#draw-inline.hidden{display:none;}
+
+.draw-sw{width:36px;height:36px;border-radius:50%;border:1px solid rgba(0,0,0,.2);}
+.draw-sw.sel{box-shadow:0 0 0 2px #fff,0 0 0 4.5px var(--brand);}
+.draw-sz{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;}
+.draw-sz i{display:block;border-radius:50%;background:var(--text);}
+.draw-sz.sel{background:var(--topbar-dark);box-shadow:inset 0 0 0 2px var(--brand);}
+#draw-confirm{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:5;}
+#draw-confirm.hidden{display:none;}
+.draw-confirm-box{background:var(--white);border-radius:18px;box-shadow:var(--shadow);padding:22px 22px 14px;width:min(300px,84vw);}
+.draw-confirm-box p{font-size:17px;color:var(--text);margin-bottom:14px;}
+.draw-confirm-box .row{display:flex;justify-content:flex-end;gap:6px;}
+.draw-confirm-box button{padding:10px 14px;border-radius:10px;font-size:16px;font-weight:600;color:var(--text-muted);}
+.draw-confirm-box button.go{color:var(--brand);}
 #img-ring{position:fixed;pointer-events:none;border:2.5px solid var(--brand);border-radius:17px;z-index:205;}
 #img-pop{position:fixed;z-index:210;background:var(--white);border-radius:14px;box-shadow:var(--shadow);padding:6px;display:flex;gap:2px;}
 #img-pop button{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--text);}
@@ -797,8 +857,36 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   </div>
 </div>
 
+<div id="draw-overlay" class="hidden">
+  <div id="draw-top">
+    <button id="draw-cancel" class="draw-ico" aria-label="Cancelar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    <div id="draw-undoredo">
+      <button id="draw-undo" class="draw-ico" aria-label="Deshacer" disabled><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+      <button id="draw-redo" class="draw-ico" aria-label="Rehacer" disabled><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+    </div>
+    <button id="draw-save">Guardar</button>
+  </div>
+  <div id="draw-stage"><div id="draw-wrap"><canvas id="draw-photo"></canvas><canvas id="draw-layer"></canvas><canvas id="draw-live"></canvas><canvas id="draw-objs"></canvas></div></div>
+  <textarea id="draw-inline" class="hidden" rows="1" wrap="off" maxlength="300" spellcheck="false" autocomplete="off" autocapitalize="sentences"></textarea>
+  <div id="draw-sel" class="hidden"><button id="draw-sel-del" aria-label="Eliminar texto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button><button id="draw-sel-res" aria-label="Cambiar tamaño"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg></button></div>
+  <div id="draw-sub" class="hidden">
+    <div id="draw-colors"><button class="draw-sw" data-c="#ffffff" aria-label="Blanco" style="background:#ffffff"></button><button class="draw-sw" data-c="#111111" aria-label="Negro" style="background:#111111"></button><button class="draw-sw" data-c="#2658a1" aria-label="Azul notematic" style="background:#2658a1"></button><button class="draw-sw" data-c="#d93a2f" aria-label="Rojo" style="background:#d93a2f"></button><button class="draw-sw" data-c="#2f9e55" aria-label="Verde" style="background:#2f9e55"></button></div>
+    <div id="draw-spray-colors"><button class="draw-sw" data-c="#f7a8c4" aria-label="Rosa pastel" style="background:#f7a8c4"></button><button class="draw-sw" data-c="#fbe38a" aria-label="Amarillo pastel" style="background:#fbe38a"></button><button class="draw-sw" data-c="#9ee0b5" aria-label="Menta pastel" style="background:#9ee0b5"></button><button class="draw-sw" data-c="#9cc9f5" aria-label="Azul cielo pastel" style="background:#9cc9f5"></button><button class="draw-sw" data-c="#c7b0f0" aria-label="Lila pastel" style="background:#c7b0f0"></button></div>
+    <div id="draw-sizes"><button class="draw-sz" data-i="0" aria-label="Grosor 1"><i style="width:6px;height:6px"></i></button><button class="draw-sz" data-i="1" aria-label="Grosor 2"><i style="width:11px;height:11px"></i></button><button class="draw-sz" data-i="2" aria-label="Grosor 3"><i style="width:18px;height:18px"></i></button></div>
+  </div>
+  <div id="draw-bar">
+    <button id="draw-tool-pen" class="draw-tool on" aria-label="Rotulador fino"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><i class="draw-cdot" id="draw-cdot"></i></button>
+    <button id="draw-tool-spray" class="draw-tool" aria-label="Spray pastel"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="9" height="11" rx="2"/><path d="M6.5 11V8h4v3"/><path d="M8.5 8V5.5h2"/><circle cx="16" cy="6" r=".7" fill="currentColor"/><circle cx="19" cy="9" r=".7" fill="currentColor"/><circle cx="19" cy="4" r=".7" fill="currentColor"/><circle cx="21.5" cy="6.5" r=".7" fill="currentColor"/></svg><i class="draw-cdot" id="draw-cdot-spray"></i></button>
+    <button id="draw-tool-erase" class="draw-tool" aria-label="Goma"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg></button>
+    <button id="draw-tool-text" class="draw-tool" aria-label="Texto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg><i class="draw-cdot" id="draw-cdot-text"></i></button>
+  </div>
+  <div id="draw-textbar" class="hidden"><button id="draw-text-done" aria-label="Terminar con el texto"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button><i class="tb-sep"></i><div id="draw-text-colors"><button class="draw-sw" data-c="#ffffff" aria-label="Blanco" style="background:#ffffff"></button><button class="draw-sw" data-c="#111111" aria-label="Negro" style="background:#111111"></button><button class="draw-sw" data-c="#f2c230" aria-label="Amarillo" style="background:#f2c230"></button><button class="draw-sw" data-c="#f08a24" aria-label="Naranja" style="background:#f08a24"></button><button class="draw-sw" data-c="#d93a2f" aria-label="Rojo" style="background:#d93a2f"></button><button class="draw-sw" data-c="#7b4bb8" aria-label="Violeta" style="background:#7b4bb8"></button><button class="draw-sw" data-c="#2658a1" aria-label="Azul notematic" style="background:#2658a1"></button><button class="draw-sw" data-c="#2f9e55" aria-label="Verde" style="background:#2f9e55"></button></div><i class="tb-sep"></i><button id="draw-text-bold" aria-label="Negrita">B</button><button id="draw-text-alpha" aria-label="Transparencia"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg></button></div>
+  <div id="draw-alpha-pop" class="hidden"><div id="draw-alpha-val">100</div><div id="draw-alpha-track"><div id="draw-alpha-fill"></div><div id="draw-alpha-thumb"></div></div></div>
+  <div id="draw-confirm" class="hidden"><div class="draw-confirm-box"><p>¿Descartar el dibujo?</p><div class="row"><button id="draw-keep">Seguir</button><button id="draw-discard" class="go">Descartar</button></div></div></div>
+</div>
 <div id="img-ring" class="hidden"></div>
 <div id="img-pop" class="hidden">
+  <button id="img-pop-draw" aria-label="Dibujar sobre la foto"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
   <button id="img-pop-cap" aria-label="Descripción"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 11h3"/><path d="M13 11h4"/><path d="M7 15h5"/><path d="M15 15h2"/></svg></button>
   <button id="img-pop-del" class="danger" aria-label="Eliminar imagen"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
 </div>
@@ -1193,7 +1281,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   var fmtUndoBtn = document.getElementById("fmt-undo");
   var fmtRedoBtn = document.getElementById("fmt-redo");
 
-  function showEditorToolbar(){ editorToolbar.classList.remove("hidden"); }
+  function showEditorToolbar(){ if(imgPopTarget) return; editorToolbar.classList.remove("hidden"); }
   function hideEditorToolbar(){ editorToolbar.classList.add("hidden"); }
 
   // Ocultar la barra en cuanto se cierra el teclado (no solo al cambiar
@@ -1491,7 +1579,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     cv.getContext("2d").drawImage(camVideo, 0, 0, cv.width, cv.height);
     var url = cv.toDataURL("image/jpeg", 0.85);
     stopCamera();
-    insertImageSrc(url);
+    insertImageSrc(url, true);
   });
 
   function readFileAsDataUrl(file){
@@ -1524,13 +1612,13 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       im.src = url;
     });
   }
-  function insertImageFile(file){
+  function insertImageFile(file, fromCam){
     if(!file) return;
-    shrinkImage(file).then(insertImageSrc).catch(function(){
+    shrinkImage(file).then(function(src){ insertImageSrc(src, fromCam); }).catch(function(){
       alert("No se pudo leer la imagen. Prueba con otra.");
     });
   }
-  function insertImageSrc(src){
+  function insertImageSrc(src, fromCam){
     bodyInput.focus();
     var sel = window.getSelection();
     sel.removeAllRanges();
@@ -1551,6 +1639,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     img.setAttribute("contenteditable", "false");
     var fig = document.createElement("figure");
     fig.className = "img-fig"; fig.setAttribute("contenteditable", "false");
+    if(fromCam) fig.setAttribute("data-cam", "1");   // foto que aún no está en la galería del móvil
     fig.appendChild(img);
     var blk = range ? topBlock(range.startContainer) : null;
     if(!blk){
@@ -1604,10 +1693,13 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     return t.tagName === "IMG" ? t : null;
   }
   function hideImgPop(){
+    var wasOpen = !!imgPopTarget;
     imgPop.classList.add("hidden"); imgRing.classList.add("hidden"); imgPopTarget = null;
+    if(wasOpen) checkKeyboardState();      // vuelve la barra si el teclado sigue abierto
   }
   function showImgPop(img){
     imgPopTarget = img;
+    hideEditorToolbar();
     var box = (img.closest("figure.img-fig") || img).getBoundingClientRect();
     imgRing.style.left = (box.left - 4) + "px";
     imgRing.style.top = (box.top - 4) + "px";
@@ -1719,11 +1811,747 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   });
   modalCap.addEventListener("click", function(e){ if(e.target === modalCap) closeCapDialog(); });
 
+  // ── DIBUJAR SOBRE LA FOTO ──
+  // Capa de trazos aparte (rotulador, spray y goma) sobre la foto. Al guardar,
+  // la imagen de la nota pasa a ser la pintada, y en la galería (carpeta de
+  // Descargas) se guarda una copia del dibujo y, si hace falta, el original.
+  var drawBackHook = null;
+  var drawOv = document.getElementById("draw-overlay");
+  var drawStage = document.getElementById("draw-stage");
+  var drawWrap = document.getElementById("draw-wrap");
+  var drawPhoto = document.getElementById("draw-photo");
+  var drawLayer = document.getElementById("draw-layer");
+  var drawLive = document.getElementById("draw-live");
+  var drawSub = document.getElementById("draw-sub");
+  var drawConfirm = document.getElementById("draw-confirm");
+  var drawUndoBtn = document.getElementById("draw-undo");
+  var drawRedoBtn = document.getElementById("draw-redo");
+  var drawTools = { pen: document.getElementById("draw-tool-pen"), spray: document.getElementById("draw-tool-spray"), erase: document.getElementById("draw-tool-erase"), text: document.getElementById("draw-tool-text") };
+  var drawCdot = document.getElementById("draw-cdot");
+  var drawCdotSpray = document.getElementById("draw-cdot-spray");
+  var drawCdotText = document.getElementById("draw-cdot-text");
+  var drawObjs = document.getElementById("draw-objs");
+  var DRAW_SIZES = [0.004, 0.008, 0.015];     // rotulador: fracción del lado largo de la foto
+  var SPRAY_SIZES = [0.035, 0.065, 0.11];     // spray: fracción del lado largo
+  var SPRAY_ALPHA = 0.5;                      // transparencia del spray
+  var ERASE_OLD_THICK = 0.048;                // el antiguo grosor máximo de goma, ahora el más fino
+  var ERASE_FINGER_CSS = 46;                  // ≈ huella de un dedo (px de pantalla)
+  var DOT_PX = { pen:[6,11,18], spray:[12,20,30], erase:[12,20,32] };
+  var TEXT_PX = [15, 22, 31];                  // tamaño de la "A" de muestra en la ventanita
+  var canFilter = (function(){ try{ return "filter" in document.createElement("canvas").getContext("2d"); }catch(_){ return false; } })();
+  var drawTmp = document.createElement("canvas");
+  var dr = { open:false, target:null, strokes:[], redo:[], hist:[], objs:[], sel:null, tx:null, rs:null, editObj:null, editBefore:null, cur:null, pid:null,
+             tool:"pen", color:"#111111", sprayColor:"#f7a8c4", penSize:1, spraySize:1, eraseSize:1,
+             textColor:"#ffffff", textFrac:0.063, textBold:false, textAlpha:1 };   // textFrac: tamaño del texto nuevo (fracción del lado largo)
+
+  function drawCtx(){ return drawLayer.getContext("2d"); }
+  function drawLiveCtx(){ return drawLive.getContext("2d"); }
+  function drawDispScale(){ return (drawWrap.clientWidth || drawLayer.width) / drawLayer.width; }   // px de pantalla por px de imagen
+  function drawStrokeWidth(tool){
+    var L = Math.max(drawLayer.width, drawLayer.height);
+    if(tool === "pen") return DRAW_SIZES[dr.penSize] * L;
+    if(tool === "spray") return SPRAY_SIZES[dr.spraySize] * L;
+    // goma: fino = antiguo máximo; grueso = un dedo; medio = intermedio
+    var k = drawDispScale();
+    var thin = ERASE_OLD_THICK * L * k;                       // en px de pantalla
+    var big = Math.max(ERASE_FINGER_CSS, thin * 2.2);
+    var css = [thin, Math.sqrt(thin * big), big][dr.eraseSize];
+    return css / k;
+  }
+  function drawSetStyle(ctx, s){
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.lineWidth = s.size; ctx.strokeStyle = s.color; ctx.fillStyle = s.color;
+    ctx.globalCompositeOperation = s.erase ? "destination-out" : "source-over";
+  }
+  function drawDot(ctx, s){
+    drawSetStyle(ctx, s);
+    ctx.beginPath(); ctx.arc(s.pts[0][0], s.pts[0][1], s.size / 2, 0, Math.PI * 2); ctx.fill();
+  }
+  function drawFull(ctx, s){
+    var p = s.pts;
+    if(p.length === 1){ drawDot(ctx, s); return; }
+    drawSetStyle(ctx, s);
+    ctx.beginPath(); ctx.moveTo(p[0][0], p[0][1]);
+    for(var i = 1; i < p.length; i++){
+      var mx = (p[i-1][0] + p[i][0]) / 2, my = (p[i-1][1] + p[i][1]) / 2;
+      ctx.quadraticCurveTo(p[i-1][0], p[i-1][1], mx, my);
+    }
+    ctx.lineTo(p[p.length-1][0], p[p.length-1][1]);
+    ctx.stroke();
+  }
+  function drawIncremental(ctx, s){
+    var p = s.pts, n = p.length;
+    if(n < 2) return;
+    drawSetStyle(ctx, s);
+    var from = s.lastMid || p[0];
+    var mx = (p[n-2][0] + p[n-1][0]) / 2, my = (p[n-2][1] + p[n-1][1]) / 2;
+    ctx.beginPath(); ctx.moveTo(from[0], from[1]);
+    ctx.quadraticCurveTo(p[n-2][0], p[n-2][1], mx, my);
+    ctx.stroke();
+    s.lastMid = [mx, my];
+  }
+  // El spray se dibuja opaco en un lienzo aparte y se pasa a la capa con
+  // transparencia y bordes suaves: dentro de un mismo trazo no se acumula.
+  function drawSprayCommit(ctx, s){
+    if(drawTmp.width !== drawLayer.width || drawTmp.height !== drawLayer.height){
+      drawTmp.width = drawLayer.width; drawTmp.height = drawLayer.height;
+    }
+    var t = drawTmp.getContext("2d");
+    t.globalCompositeOperation = "source-over";
+    t.clearRect(0, 0, drawTmp.width, drawTmp.height);
+    drawFull(t, s);
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = SPRAY_ALPHA;
+    if(canFilter) ctx.filter = "blur(" + (s.size * 0.14).toFixed(2) + "px)";
+    ctx.drawImage(drawTmp, 0, 0);
+    ctx.restore();
+  }
+  function drawRedrawAll(){
+    var ctx = drawCtx();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.clearRect(0, 0, drawLayer.width, drawLayer.height);
+    dr.strokes.forEach(function(s){ if(s.spray) drawSprayCommit(ctx, s); else drawFull(ctx, s); });
+  }
+  function drawLayerPoint(e){
+    var r = drawLayer.getBoundingClientRect();
+    return [(e.clientX - r.left) * drawLayer.width / r.width, (e.clientY - r.top) * drawLayer.height / r.height];
+  }
+  function drawUpdateUndo(){
+    drawUndoBtn.disabled = dr.hist.length === 0;
+    drawRedoBtn.disabled = dr.redo.length === 0;
+  }
+  function drawCloseSub(){ drawSub.classList.add("hidden"); if(dr.editObj) drawFit(); }
+  function drawPaintUi(){
+    var t = dr.tool, tOn = t;
+    t = t || "pen";                       // sin herramienta: las ventanitas ocultas usan los ajustes del rotulador
+    Object.keys(drawTools).forEach(function(k){ drawTools[k].classList.toggle("on", k === tOn); });
+    drawCdot.style.background = dr.color;
+    drawCdotSpray.style.background = dr.sprayColor;
+    drawCdotText.style.background = dr.textColor;
+    document.getElementById("draw-colors").style.display = t === "pen" ? "" : "none";
+    document.getElementById("draw-spray-colors").style.display = t === "spray" ? "" : "none";
+    var cur = t === "pen" ? dr.color : (t === "spray" ? dr.sprayColor : dr.textColor);
+    Array.prototype.forEach.call(document.querySelectorAll("#draw-colors .draw-sw, #draw-spray-colors .draw-sw, #draw-text-colors .draw-sw"), function(b){
+      b.classList.toggle("sel", b.getAttribute("data-c") === cur);
+    });
+    var idx = t === "pen" ? dr.penSize : (t === "spray" ? dr.spraySize : dr.eraseSize);
+    document.getElementById("draw-text-bold").classList.toggle("on", !!dr.textBold);
+    drawAlphaUi();
+    Array.prototype.forEach.call(document.querySelectorAll("#draw-sizes .draw-sz"), function(b){
+      var i = +b.getAttribute("data-i"), dot = b.firstChild;
+      b.classList.toggle("sel", i === idx);
+      if(t === "text"){
+        dot.className = "glyph"; dot.textContent = "A";
+        dot.style.width = "auto"; dot.style.height = "auto"; dot.style.fontSize = TEXT_PX[i] + "px";
+        dot.style.background = ""; dot.style.opacity = ""; dot.style.boxShadow = "";
+      } else {
+        dot.className = ""; dot.textContent = ""; dot.style.fontSize = "";
+        var d = DOT_PX[t][i];
+        dot.style.width = d + "px"; dot.style.height = d + "px";
+        dot.style.background = t === "spray" ? dr.sprayColor : "";
+        dot.style.opacity = t === "spray" ? "0.9" : "";
+        dot.style.boxShadow = t === "spray" ? "0 0 0 1px rgba(0,0,0,.18)" : "";
+      }
+    });
+  }
+  // Modo texto: la barra general se sustituye por la barra fina de colores, negrita y transparencia
+  function drawEnterTextMode(){
+    dr.tool = "text";
+    drawCloseSub(); drawBar.classList.add("hidden"); drawTextBar.classList.remove("hidden");
+    drawPaintUi(); drawFit();
+  }
+  function drawPickTool(t){
+    if(t === "text"){
+      if(dr.tool === "text") return;
+      drawEnterTextMode(); drawAddPlaceholder();
+      return;
+    }
+    if(dr.tool === t && !drawSub.classList.contains("hidden")){ drawCloseSub(); return; }
+    dr.tool = t;
+    drawEndEdit(); drawDeselect();
+    drawPaintUi(); drawSub.classList.remove("hidden");
+  }
+  // ✓ de la barra de texto: termina de escribir y vuelve la barra general de herramientas
+  function drawExitText(){
+    drawAlphaClose();
+    drawEndEdit(); drawDeselect();
+    dr.objs = dr.objs.filter(function(o){ return !o.pristine; });
+    drawObjsRender();
+    dr.tool = null;                        // al terminar con el texto no queda ninguna herramienta activa
+    drawTextBar.classList.add("hidden"); drawBar.classList.remove("hidden");
+    drawPaintUi(); drawFit();
+  }
+  function drawFit(){
+    if(!dr.open || !drawPhoto.width) return;
+    // Mientras se escribe, la foto se encaja por encima de la ventanita y la barra de herramientas
+    var padB = "";
+    if(dr.editObj || dr.tool === "text"){
+      var topY = 1e9, sr = drawStage.getBoundingClientRect();
+      [drawSub, drawBar, drawTextBar].forEach(function(el){
+        if(!el.classList.contains("hidden")){ var r = el.getBoundingClientRect(); if(r.height) topY = Math.min(topY, r.top); }
+      });
+      if(topY < 1e9) padB = Math.max(60, sr.bottom - topY + 10) + "px";
+    }
+    drawStage.style.paddingBottom = padB;
+    var cs = getComputedStyle(drawStage);
+    var aw = drawStage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    var ah = drawStage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    var k = Math.min(aw / drawPhoto.width, ah / drawPhoto.height);
+    drawWrap.style.width = Math.floor(drawPhoto.width * k) + "px";
+    drawWrap.style.height = Math.floor(drawPhoto.height * k) + "px";
+    drawSelUpdate();
+  }
+  // Con el teclado abierto, el editor ocupa solo la parte visible de la pantalla
+  function drawViewportSync(){
+    if(!dr.open) return;
+    var vv = window.visualViewport;
+    if(vv){ drawOv.style.top = vv.offsetTop + "px"; drawOv.style.height = vv.height + "px"; drawOv.style.bottom = "auto"; }
+    drawFit();
+  }
+  window.addEventListener("resize", drawViewportSync);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener("resize", drawViewportSync);
+    window.visualViewport.addEventListener("scroll", drawViewportSync);
+  }
+
+  function openDraw(imgEl){
+    hideImgPop();
+    if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    var im = new Image();
+    im.onload = function(){
+      var sc = Math.min(1, 2000 / Math.max(im.naturalWidth, im.naturalHeight));
+      var cw = Math.max(1, Math.round(im.naturalWidth * sc)), ch = Math.max(1, Math.round(im.naturalHeight * sc));
+      [drawPhoto, drawLayer, drawLive, drawObjs].forEach(function(c){ c.width = cw; c.height = ch; });
+      var pc = drawPhoto.getContext("2d");
+      pc.fillStyle = "#fff"; pc.fillRect(0, 0, cw, ch); pc.drawImage(im, 0, 0, cw, ch);
+      dr.target = imgEl; dr.strokes = []; dr.redo = []; dr.hist = []; dr.objs = []; dr.sel = null; dr.tx = null; dr.rs = null; dr.cur = null; dr.tool = null; dr.editObj = null; dr.editBefore = null;
+      drawTextBar.classList.add("hidden"); drawBar.classList.remove("hidden");
+      drawInline.classList.add("hidden"); drawSel.classList.add("hidden");
+      if(document.fonts && document.fonts.load){ document.fonts.load("500 20px 'DM Sans'"); document.fonts.load("600 20px 'DM Sans'"); }
+      dr.textBold = false; dr.textAlpha = 1; dr.textFrac = 0.063; drawAlphaPop.classList.add("hidden");
+      drawCloseSub(); drawConfirm.classList.add("hidden");
+      drawPaintUi(); drawUpdateUndo();
+      dr.open = true;
+      drawOv.classList.remove("hidden");
+      drawViewportSync();
+    };
+    im.onerror = function(){ alert("No se pudo abrir la imagen para dibujar."); };
+    im.src = imgEl.src;
+  }
+  function closeDraw(){
+    dr.open = false; dr.target = null; dr.strokes = []; dr.redo = []; dr.hist = []; dr.objs = []; dr.sel = null; dr.tx = null; dr.rs = null; dr.cur = null; dr.editObj = null; dr.editBefore = null;
+    drawInline.classList.add("hidden"); drawInline.blur(); drawSel.classList.add("hidden"); drawAlphaPop.classList.add("hidden");
+    drawOv.classList.add("hidden");
+    drawOv.style.top = ""; drawOv.style.height = ""; drawOv.style.bottom = ""; drawStage.style.paddingBottom = "";
+    drawConfirm.classList.add("hidden");
+    [drawPhoto, drawLayer, drawLive, drawObjs, drawTmp].forEach(function(c){ c.width = 1; c.height = 1; });
+  }
+  function drawRequestCancel(){
+    drawEndEdit();
+    if(dr.hist.length) drawConfirm.classList.remove("hidden"); else closeDraw();
+  }
+  // Descarga un archivo al móvil (carpeta Descargas, que la galería muestra como álbum)
+  function drawDownload(blob, name){
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); if(a.parentNode) a.parentNode.removeChild(a); }, 5000);
+  }
+  function drawSave(){
+    var target = dr.target;
+    drawEndEdit();
+    drawSelect(null);
+    if(!dr.hist.length || !target || !target.parentNode){ closeDraw(); return; }
+    var cv = document.createElement("canvas");
+    cv.width = drawPhoto.width; cv.height = drawPhoto.height;
+    var c = cv.getContext("2d");
+    c.drawImage(drawPhoto, 0, 0); c.drawImage(drawLayer, 0, 0);
+    drawObjsInto(c, true);
+    var url = cv.toDataURL("image/jpeg", 0.9);
+    var fig = target.closest("figure.img-fig");
+    var oldSrc = target.src, wasCam = !!(fig && fig.getAttribute("data-cam"));
+    // En la nota solo queda la imagen pintada
+    target.src = url;
+    if(fig) fig.removeAttribute("data-cam");
+    closeDraw();
+    bodyInput.dispatchEvent(new Event("input", {bubbles:true}));
+    // En la galería: la copia pintada y, si la foto la hizo la propia app con la cámara
+    // (y por tanto aún no está en la galería), también el original
+    var d = new Date(), pad = function(n){ return (n < 10 ? "0" : "") + n; };
+    var stamp = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + "_" + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+    cv.toBlob(function(blob){
+      if(blob) drawDownload(blob, "notematic_" + stamp + "_dibujo.jpg");
+      if(wasCam){
+        fetch(oldSrc).then(function(r){ return r.blob(); }).then(function(ob){
+          setTimeout(function(){ drawDownload(ob, "notematic_" + stamp + "_original.jpg"); }, 600);
+        }).catch(function(){});
+      }
+    }, "image/jpeg", 0.9);
+    showToast(wasCam ? "Dibujo guardado; copia y original en Descargas" : "Dibujo guardado; copia en Descargas", "Deshacer", function(){
+      if(!target.parentNode) return;
+      target.src = oldSrc;
+      if(fig && wasCam) fig.setAttribute("data-cam", "1");
+      bodyInput.dispatchEvent(new Event("input", {bubbles:true}));
+    });
+  }
+
+  drawLayer.addEventListener("pointerdown", function(e){
+    if(!e.isPrimary || dr.cur || dr.tx) return;
+    e.preventDefault();
+    drawAlphaClose();
+    // Con la ventanita abierta, tocar la imagen solo la cierra; dibuja el siguiente gesto
+    if(dr.editObj && dr.tool === "text"){
+      var o2 = objAt(drawLayerPoint(e));
+      drawEndEdit();
+      if(!o2){ drawCloseSub(); return; }       // tocar fuera del texto: termina de escribir
+    } else if(!drawSub.classList.contains("hidden")){
+      var onText = dr.tool === "text" && objAt(drawLayerPoint(e));
+      if(!onText){ drawCloseSub(); return; }    // tocar un texto no cierra la ventanita
+    }
+    try{ drawLayer.setPointerCapture(e.pointerId); }catch(_){}
+    var t = dr.tool;
+    if(!t){
+      // Sin herramienta no se pinta; tocar un texto ya creado abre su barra y lo selecciona
+      var oo = objAt(drawLayerPoint(e));
+      if(!oo) return;
+      drawEnterTextMode(); drawSelect(oo);
+      dr.tx = { pid: e.pointerId, start: [0, 0], moved: false, obj: null, wasSel: false, before: null, ox: 0, oy: 0, consume: true };
+      return;
+    }
+    if(t === "text"){ drawTextDown(e); return; }
+    var s = { erase: t === "erase", spray: t === "spray", color: t === "spray" ? dr.sprayColor : dr.color,
+              size: drawStrokeWidth(t), pts: [drawLayerPoint(e)] };
+    dr.cur = s; dr.pid = e.pointerId;
+    if(s.spray){
+      var lc = drawLiveCtx(); lc.clearRect(0, 0, drawLive.width, drawLive.height);
+      drawLive.style.opacity = SPRAY_ALPHA;
+      drawLive.style.filter = canFilter ? "blur(" + (s.size * 0.14 * drawDispScale()).toFixed(2) + "px)" : "";
+      drawDot(lc, s);
+    } else drawDot(drawCtx(), s);
+  });
+  drawLayer.addEventListener("pointermove", function(e){
+    if(dr.tx){ e.preventDefault(); drawTextMove(e); return; }
+    var s = dr.cur;
+    if(!s || e.pointerId !== dr.pid) return;
+    e.preventDefault();
+    var evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+    if(!evs.length) evs = [e];
+    var ctx = s.spray ? drawLiveCtx() : drawCtx();
+    evs.forEach(function(ev){
+      var pt = drawLayerPoint(ev), last = s.pts[s.pts.length - 1];
+      if(Math.abs(pt[0] - last[0]) + Math.abs(pt[1] - last[1]) < 1.2) return;
+      s.pts.push(pt);
+      drawIncremental(ctx, s);
+    });
+  });
+  function drawEndStroke(e){
+    var s = dr.cur;
+    if(!s || (e && e.pointerId !== dr.pid)) return;
+    dr.cur = null;
+    var p = s.pts, ctx = s.spray ? drawLiveCtx() : drawCtx();
+    if(p.length > 1){
+      var from = s.lastMid || p[0];
+      drawSetStyle(ctx, s);
+      ctx.beginPath(); ctx.moveTo(from[0], from[1]); ctx.lineTo(p[p.length-1][0], p[p.length-1][1]); ctx.stroke();
+    }
+    delete s.lastMid;
+    if(s.spray){
+      drawSprayCommit(drawCtx(), s);
+      ctx.clearRect(0, 0, drawLive.width, drawLive.height);
+    }
+    dr.strokes.push(s); dr.hist.push({k:"stroke"}); dr.redo = [];
+    drawUpdateUndo();
+  }
+  drawLayer.addEventListener("pointerup", function(e){ if(dr.tx){ drawTextUp(e); return; } drawEndStroke(e); });
+  drawLayer.addEventListener("pointercancel", function(e){ if(dr.tx){ drawTextUp(e); return; } drawEndStroke(e); });
+
+  drawUndoBtn.addEventListener("click", function(){
+    drawEndEdit();
+    var a = dr.hist.pop(); if(!a) return;
+    if(a.k === "stroke"){ dr.redo.push({k:"stroke", s:dr.strokes.pop()}); drawRedrawAll(); }
+    else { dr.objs = cloneObjs(a.before); dr.redo.push(a); drawSelect(null); drawObjsRender(); }
+    drawUpdateUndo();
+  });
+  drawRedoBtn.addEventListener("click", function(){
+    drawEndEdit();
+    var a = dr.redo.pop(); if(!a) return;
+    if(a.k === "stroke"){ dr.strokes.push(a.s); dr.hist.push({k:"stroke"}); drawRedrawAll(); }
+    else { dr.objs = cloneObjs(a.after); dr.hist.push(a); drawSelect(null); drawObjsRender(); }
+    drawUpdateUndo();
+  });
+  drawTools.pen.addEventListener("click", function(){ drawPickTool("pen"); });
+  drawTools.spray.addEventListener("click", function(){ drawPickTool("spray"); });
+  drawTools.erase.addEventListener("click", function(){ drawPickTool("erase"); });
+  drawTools.text.addEventListener("click", function(){ drawPickTool("text"); });
+  Array.prototype.forEach.call(document.querySelectorAll("#draw-colors .draw-sw"), function(b){
+    b.addEventListener("click", function(){ dr.color = b.getAttribute("data-c"); drawPaintUi(); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#draw-spray-colors .draw-sw"), function(b){
+    b.addEventListener("click", function(){ dr.sprayColor = b.getAttribute("data-c"); drawPaintUi(); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#draw-text-colors .draw-sw"), function(b){
+    b.addEventListener("click", function(){
+      dr.textColor = b.getAttribute("data-c");
+      if(dr.sel && dr.sel.color !== dr.textColor){
+        if(dr.sel.pristine || dr.editObj === dr.sel){ dr.sel.color = dr.textColor; drawObjsRender(); drawSelUpdate(); }
+        else { var before = objsSnap(); dr.sel.color = dr.textColor; drawObjsRender(); drawPushObjs(before); }
+      }
+      drawPaintUi();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#draw-sizes .draw-sz"), function(b){
+    b.addEventListener("click", function(){
+      var i = +b.getAttribute("data-i");
+      if(dr.tool === "erase") dr.eraseSize = i; else if(dr.tool === "spray") dr.spraySize = i;
+      else dr.penSize = i;
+      drawPaintUi();
+    });
+  });
+  // ── TEXTO sobre la foto ──
+  // Los textos son objetos (no píxeles): se pueden mover, cambiar de tamaño y color,
+  // editar y borrar mientras estás en el editor. Al guardar quedan fijados en la imagen.
+  var drawSel = document.getElementById("draw-sel");
+  var drawInline = document.getElementById("draw-inline");
+  var drawBar = document.getElementById("draw-bar");
+  var drawTextBar = document.getElementById("draw-textbar");
+  var drawAlphaPop = document.getElementById("draw-alpha-pop");
+  var drawAlphaTrack = document.getElementById("draw-alpha-track");
+  var drawAlphaFill = document.getElementById("draw-alpha-fill");
+  var drawAlphaThumb = document.getElementById("draw-alpha-thumb");
+  var drawAlphaVal = document.getElementById("draw-alpha-val");
+  var drawAlphaBtn = document.getElementById("draw-text-alpha");
+  var objSeq = 0;
+  function cloneObjs(a){ return JSON.parse(JSON.stringify(a)); }
+  // Instantánea sin el texto de muestra que aún no se ha tocado (no cuenta para deshacer)
+  function objsSnap(){ return cloneObjs(dr.objs.filter(function(x){ return !x.pristine; })); }
+  // Al elegir la herramienta de texto aparece ya un texto de muestra, seleccionado.
+  // Si no se mueve, no se cambia de tamaño ni se edita, desaparece al soltar la selección.
+  function drawAddPlaceholder(){
+    var L = Math.max(drawLayer.width, drawLayer.height);
+    dr.textBold = false; dr.textAlpha = 1;
+    var o = { id: ++objSeq, kind: "text", text: "Texto", color: dr.textColor, size: dr.textFrac * L, bold: dr.textBold, alpha: 1,
+              x: drawLayer.width / 2, y: drawLayer.height / 2, pristine: true };
+    dr.objs.push(o); drawObjsRender(); drawSelect(o);
+  }
+  function clampN(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+  function textFont(o){ return (o.bold ? "600 " : "500 ") + o.size + "px 'DM Sans', sans-serif"; }
+  function textLayout(ctx, o){
+    ctx.font = textFont(o);
+    var lines = o.text.split("\n"), w = 0;
+    lines.forEach(function(l){ w = Math.max(w, ctx.measureText(l).width); });
+    var lh = o.size * 1.22;
+    return { lines: lines, lh: lh, w: w, h: lines.length * lh };
+  }
+  // Negrita: grosor fuerte + un ligero contorno del mismo color. Transparencia: el texto se pinta
+  // opaco en un lienzo auxiliar y se pasa con alfa, para que sombra y contorno no se sumen.
+  var drawTxTmp = document.createElement("canvas");
+  function paintTextAt(ctx, o, cx, cy, L){
+    ctx.save();
+    ctx.font = textFont(o); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.globalCompositeOperation = "source-over"; ctx.lineJoin = "round";
+    ctx.fillStyle = o.color; ctx.strokeStyle = o.color;
+    var y0 = cy - L.h / 2 + L.lh / 2, shadow = o.color === "#ffffff";
+    function setShadow(on){
+      ctx.shadowColor = on ? "rgba(0,0,0,.5)" : "transparent";
+      ctx.shadowBlur = on ? o.size * 0.14 : 0; ctx.shadowOffsetY = on ? o.size * 0.04 : 0;
+    }
+    L.lines.forEach(function(l, i){
+      var y = y0 + i * L.lh;
+      if(o.bold){
+        ctx.lineWidth = o.size * 0.03; setShadow(shadow); ctx.strokeText(l, cx, y);
+        setShadow(false); ctx.fillText(l, cx, y);
+      } else { setShadow(shadow); ctx.fillText(l, cx, y); }
+    });
+    ctx.restore();
+  }
+  function drawTextObj(ctx, o){
+    var L = textLayout(ctx, o), a = o.alpha == null ? 1 : o.alpha;
+    if(a >= 0.999){ paintTextAt(ctx, o, o.x, o.y, L); return; }
+    if(a <= 0) return;
+    var m = Math.ceil(o.size * 0.6), w = Math.ceil(L.w + 2 * m), h = Math.ceil(L.h + 2 * m);
+    drawTxTmp.width = w; drawTxTmp.height = h;
+    paintTextAt(drawTxTmp.getContext("2d"), o, w / 2, h / 2, L);
+    ctx.save(); ctx.globalAlpha = a; ctx.drawImage(drawTxTmp, o.x - w / 2, o.y - h / 2); ctx.restore();
+  }
+  function drawObjsInto(ctx, skipSample){ dr.objs.forEach(function(o){ if(!(skipSample && o.pristine)) drawTextObj(ctx, o); }); }
+  function drawObjsRender(){
+    var c = drawObjs.getContext("2d");
+    c.clearRect(0, 0, drawObjs.width, drawObjs.height);
+    dr.objs.forEach(function(o){ if(o !== dr.editObj) drawTextObj(c, o); });
+  }
+  function objBox(o){
+    var L = textLayout(drawObjs.getContext("2d"), o), pad = o.size * 0.28;
+    L.w = Math.max(L.w, o.size * 0.6);
+    return { x: o.x - L.w / 2 - pad, y: o.y - L.h / 2 - pad, w: L.w + pad * 2, h: L.h + pad * 2 };
+  }
+  function objAt(pt){
+    var tol = 14 / drawDispScale();
+    for(var i = dr.objs.length - 1; i >= 0; i--){
+      var b = objBox(dr.objs[i]);
+      if(pt[0] >= b.x - tol && pt[0] <= b.x + b.w + tol && pt[1] >= b.y - tol && pt[1] <= b.y + b.h + tol) return dr.objs[i];
+    }
+    return null;
+  }
+  function drawSelUpdate(){
+    var o = dr.sel;
+    if(!o || !dr.open){ drawSel.classList.add("hidden"); return; }
+    var r = drawWrap.getBoundingClientRect(), ov = drawOv.getBoundingClientRect(), k = drawDispScale(), b = objBox(o);
+    drawSel.style.left = (r.left - ov.left + b.x * k) + "px"; drawSel.style.top = (r.top - ov.top + b.y * k) + "px";
+    drawSel.style.width = (b.w * k) + "px"; drawSel.style.height = (b.h * k) + "px";
+    drawSel.classList.remove("hidden");
+    if(dr.editObj === o) drawInlineUpdate();
+  }
+  function drawSelect(o){
+    if(dr.editObj && dr.editObj !== o) drawEndEdit();
+    var n = dr.objs.length;
+    dr.objs = dr.objs.filter(function(x){ return !x.pristine || x === o; });
+    if(dr.objs.length !== n) drawObjsRender();
+    dr.sel = o;
+    if(o){
+      dr.textColor = o.color; dr.textBold = !!o.bold; dr.textAlpha = o.alpha == null ? 1 : o.alpha;
+    }
+    drawSelUpdate(); drawPaintUi();
+  }
+  function drawDeselect(){ if(dr.sel) drawSelect(null); }
+  function drawPushObjs(before){
+    dr.hist.push({k:"objs", before: before, after: cloneObjs(dr.objs)});
+    dr.redo = []; drawUpdateUndo();
+  }
+
+  // Gesto con la herramienta de texto: tocar vacío = nuevo texto; tocar un texto = seleccionarlo;
+  // arrastrarlo = moverlo; tocar el ya seleccionado = editarlo.
+  function drawTextDown(e){
+    var pt = drawLayerPoint(e), o = objAt(pt);
+    var tx = { pid: e.pointerId, start: pt, moved: false, obj: null, wasSel: false, before: null, ox: 0, oy: 0, consume: false };
+    if(o){
+      tx.obj = o; tx.wasSel = (dr.sel === o); tx.before = objsSnap();
+      tx.ox = o.x - pt[0]; tx.oy = o.y - pt[1];
+      if(!tx.wasSel) drawSelect(o);
+    } else if(dr.sel){
+      drawSelect(null); tx.consume = true;          // el primer toque en vacío solo deselecciona
+    }
+    dr.tx = tx;
+  }
+  function drawTextMove(e){
+    var tx = dr.tx;
+    if(!tx || e.pointerId !== tx.pid || tx.consume) return;
+    var pt = drawLayerPoint(e);
+    if(!tx.moved && Math.hypot(pt[0] - tx.start[0], pt[1] - tx.start[1]) * drawDispScale() < 6) return;
+    tx.moved = true;
+    if(tx.obj){
+      tx.obj.x = clampN(pt[0] + tx.ox, 0, drawLayer.width);
+      tx.obj.y = clampN(pt[1] + tx.oy, 0, drawLayer.height);
+      drawObjsRender(); drawSelUpdate();
+    }
+  }
+  function drawTextUp(e){
+    var tx = dr.tx;
+    if(!tx || (e && e.pointerId !== tx.pid)) return;
+    dr.tx = null;
+    if(tx.consume) return;
+    var cancelled = e && e.type === "pointercancel";
+    if(tx.obj){
+      if(tx.moved){ tx.obj.pristine = false; drawPushObjs(tx.before); }
+      else if(tx.wasSel && !cancelled) drawStartEdit(tx.obj);
+    } else if(!tx.moved && !cancelled){
+      drawNewTextAt(tx.start);
+    }
+  }
+  // ── Escritura directa sobre la foto ──
+  // Un campo de texto transparente se coloca exactamente sobre el texto (misma letra, tamaño y color),
+  // de modo que se escribe "en el sitio". Se ve el texto real mientras tecleas.
+  function drawInlineUpdate(){
+    var o = dr.editObj; if(!o) return;
+    var r = drawWrap.getBoundingClientRect(), ov = drawOv.getBoundingClientRect(), k = drawDispScale(), b = objBox(o);
+    var st = drawInline.style;
+    st.left = (r.left - ov.left + b.x * k - 2) + "px"; st.top = (r.top - ov.top + b.y * k) + "px";
+    st.width = (b.w * k + 4) + "px"; st.height = (b.h * k) + "px";
+    st.padding = (o.size * 0.28 * k) + "px";
+    st.fontSize = (o.size * k) + "px"; st.lineHeight = (o.size * 1.22 * k) + "px";
+    st.color = o.color; st.caretColor = o.color;
+    st.fontWeight = o.bold ? "600" : "500";
+    st.webkitTextStroke = o.bold ? (o.size * 0.03 * k) + "px " + o.color : "0";
+    st.opacity = Math.max(0.3, o.alpha == null ? 1 : o.alpha);       // al escribir nunca se ve menos del 30 %
+    st.textShadow = o.color === "#ffffff" ? "0 " + (o.size * 0.04 * k) + "px " + (o.size * 0.14 * k) + "px rgba(0,0,0,.5)" : "none";
+    drawInline.scrollTop = 0; drawInline.scrollLeft = 0;
+  }
+  function drawStartEdit(o){
+    if(dr.editObj === o) return;
+    if(dr.editObj) drawEndEdit();
+    dr.editObj = o; dr.editBefore = objsSnap();
+    drawObjsRender();
+    drawInline.value = o.text;
+    drawInline.classList.remove("hidden");
+    drawFit();
+    drawInline.focus({preventScroll:true});
+    if(o.pristine) drawInline.select();                          // la palabra de muestra queda seleccionada entera
+    else { var n = drawInline.value.length; drawInline.setSelectionRange(n, n); }
+  }
+  function drawEndEdit(){
+    var o = dr.editObj; if(!o) return;
+    var before = dr.editBefore;
+    dr.editObj = null; dr.editBefore = null;
+    drawInline.classList.add("hidden"); drawInline.blur();
+    o.text = o.text.replace(/^\s*\n/, "").replace(/\s+$/, "");
+    if(!o.text){
+      dr.objs = dr.objs.filter(function(x){ return x !== o; });
+      if(dr.sel === o) drawSelect(null);
+    }
+    var now = objsSnap();
+    if(JSON.stringify(now) !== JSON.stringify(before)){
+      dr.hist.push({k:"objs", before: before, after: now}); dr.redo = []; drawUpdateUndo();
+    }
+    drawObjsRender(); drawFit();
+  }
+  function drawNewTextAt(pt){
+    var L = Math.max(drawLayer.width, drawLayer.height);
+    dr.textBold = false; dr.textAlpha = 1;
+    var o = { id: ++objSeq, kind: "text", text: "Texto", color: dr.textColor, size: dr.textFrac * L, bold: dr.textBold, alpha: 1,
+              x: pt[0], y: pt[1], pristine: true };
+    var b = objBox(o);
+    if(b.w < drawLayer.width) o.x = clampN(o.x, b.w / 2, drawLayer.width - b.w / 2);
+    if(b.h < drawLayer.height) o.y = clampN(o.y, b.h / 2, drawLayer.height - b.h / 2);
+    dr.objs.push(o); drawObjsRender(); drawSelect(o); drawStartEdit(o);
+  }
+  drawInline.addEventListener("input", function(){
+    var o = dr.editObj; if(!o) return;
+    o.text = drawInline.value; o.pristine = false;
+    drawObjsRender(); drawSelUpdate();
+  });
+  document.getElementById("draw-text-bold").addEventListener("click", function(){
+    dr.textBold = !dr.textBold;
+    var o = dr.sel;
+    if(o){
+      var before = objsSnap();
+      o.bold = dr.textBold; drawObjsRender(); drawSelUpdate();
+      if(!o.pristine && dr.editObj !== o) drawPushObjs(before);
+    }
+    drawPaintUi();
+  });
+  // Transparencia: deslizador vertical (100 arriba, 0 abajo) que se maneja desde cualquier punto de su columna
+  function drawAlphaUi(){
+    var v = Math.round((dr.textAlpha == null ? 1 : dr.textAlpha) * 100);
+    drawAlphaVal.textContent = v;
+    drawAlphaFill.style.height = v + "%";
+    drawAlphaThumb.style.top = (100 - v) + "%";
+    drawAlphaBtn.classList.toggle("on", !drawAlphaPop.classList.contains("hidden"));
+  }
+  function drawAlphaOpen(){
+    drawAlphaPop.classList.remove("hidden");
+    var ov = drawOv.getBoundingClientRect(), br = drawAlphaBtn.getBoundingClientRect();
+    drawAlphaPop.style.left = clampN(br.left + br.width / 2 - 34 - ov.left, 6, ov.width - 68 - 6) + "px";
+    drawAlphaUi();
+  }
+  function drawAlphaClose(){ if(!drawAlphaPop.classList.contains("hidden")){ drawAlphaPop.classList.add("hidden"); drawAlphaUi(); } }
+  drawAlphaBtn.addEventListener("click", function(){
+    if(drawAlphaPop.classList.contains("hidden")) drawAlphaOpen(); else drawAlphaClose();
+  });
+  function drawAlphaFromPointer(e){
+    var r = drawAlphaTrack.getBoundingClientRect();
+    var v = Math.round(clampN(1 - (e.clientY - r.top) / r.height, 0, 1) * 100) / 100;
+    dr.textAlpha = v;
+    if(dr.sel){ dr.sel.alpha = v; drawObjsRender(); drawSelUpdate(); }
+    if(dr.al) dr.al.changed = true;
+    drawAlphaUi();
+  }
+  drawAlphaPop.addEventListener("pointerdown", function(e){
+    e.preventDefault();
+    try{ drawAlphaPop.setPointerCapture(e.pointerId); }catch(_){}
+    dr.al = { pid: e.pointerId, before: objsSnap(), changed: false };
+    drawAlphaFromPointer(e);
+  });
+  drawAlphaPop.addEventListener("pointermove", function(e){
+    if(!dr.al || e.pointerId !== dr.al.pid) return;
+    e.preventDefault(); drawAlphaFromPointer(e);
+  });
+  function drawAlphaEnd(e){
+    var al = dr.al; if(!al || (e && e.pointerId !== al.pid)) return;
+    dr.al = null;
+    var o = dr.sel;
+    if(al.changed && o && !o.pristine && dr.editObj !== o) drawPushObjs(al.before);
+  }
+  drawAlphaPop.addEventListener("pointerup", drawAlphaEnd);
+  drawAlphaPop.addEventListener("pointercancel", drawAlphaEnd);
+  document.getElementById("draw-text-done").addEventListener("click", drawExitText);
+  // Tocar la ventanita o los controles mientras se escribe no debe cerrar el teclado
+  [drawSub, drawSel, drawTextBar, drawAlphaPop].forEach(function(el){
+    el.addEventListener("pointerdown", function(e){ if(dr.editObj) e.preventDefault(); });
+    el.addEventListener("click", function(){
+      if(dr.editObj) setTimeout(function(){ if(dr.editObj) drawInline.focus({preventScroll:true}); }, 0);
+    });
+  });
+  drawLayer.addEventListener("click", function(){ if(dr.editObj) drawInline.focus({preventScroll:true}); });
+  // Tocar el fondo oscuro, fuera de la foto, también termina de escribir
+  drawStage.addEventListener("pointerdown", function(e){
+    if(e.target === drawStage){ drawAlphaClose(); if(dr.editObj){ drawEndEdit(); drawCloseSub(); } }
+  });
+  document.getElementById("draw-sel-del").addEventListener("click", function(){
+    var o = dr.sel; if(!o) return;
+    drawEndEdit();
+    if(dr.objs.indexOf(o) < 0) return;
+    var before = objsSnap(), wasP = !!o.pristine;
+    dr.objs = dr.objs.filter(function(x){ return x !== o; });
+    drawSelect(null); drawObjsRender();
+    if(!wasP) drawPushObjs(before);
+  });
+  // Tirador de esquina: cambia el tamaño del texto escalando desde su centro
+  var drawSelRes = document.getElementById("draw-sel-res");
+  drawSelRes.addEventListener("pointerdown", function(e){
+    var o = dr.sel; if(!o) return;
+    e.preventDefault(); e.stopPropagation();
+    try{ drawSelRes.setPointerCapture(e.pointerId); }catch(_){}
+    var r = drawWrap.getBoundingClientRect(), k = drawDispScale();
+    var cx = r.left + o.x * k, cy = r.top + o.y * k;
+    dr.rs = { pid: e.pointerId, o: o, before: objsSnap(), size0: o.size, cx: cx, cy: cy,
+              d0: Math.max(8, Math.hypot(e.clientX - cx, e.clientY - cy)), changed: false };
+  });
+  drawSelRes.addEventListener("pointermove", function(e){
+    var rs = dr.rs; if(!rs || e.pointerId !== rs.pid) return;
+    e.preventDefault();
+    var L = Math.max(drawLayer.width, drawLayer.height);
+    var d = Math.hypot(e.clientX - rs.cx, e.clientY - rs.cy);
+    rs.o.size = clampN(rs.size0 * d / rs.d0, 0.012 * L, 0.3 * L);
+    rs.changed = true;
+    drawObjsRender(); drawSelUpdate();
+  });
+  function drawResEnd(e){
+    var rs = dr.rs; if(!rs || (e && e.pointerId !== rs.pid)) return;
+    dr.rs = null;
+    if(rs.changed){
+      dr.textFrac = rs.o.size / Math.max(drawLayer.width, drawLayer.height);   // los textos nuevos nacen con este tamaño
+      rs.o.pristine = false;
+      if(dr.editObj !== rs.o) drawPushObjs(rs.before);
+      drawSelect(rs.o);
+    }
+    if(dr.editObj) drawInline.focus({preventScroll:true});
+  }
+  drawSelRes.addEventListener("pointerup", drawResEnd);
+  drawSelRes.addEventListener("pointercancel", drawResEnd);
+
+  document.getElementById("draw-cancel").addEventListener("click", drawRequestCancel);
+  document.getElementById("draw-save").addEventListener("click", drawSave);
+  document.getElementById("draw-keep").addEventListener("click", function(){ drawConfirm.classList.add("hidden"); });
+  document.getElementById("draw-discard").addEventListener("click", closeDraw);
+  document.getElementById("img-pop-draw").addEventListener("click", function(){
+    var img = imgPopTarget; if(img) openDraw(img);
+  });
+  // Botón/gesto atrás del móvil: cierra primero lo que haya abierto dentro del editor de dibujo
+  drawBackHook = function(){
+    if(!dr.open) return false;
+    if(dr.editObj){ drawEndEdit(); return true; }
+    if(!drawConfirm.classList.contains("hidden")){ drawConfirm.classList.add("hidden"); return true; }
+    if(!drawSub.classList.contains("hidden")){ drawCloseSub(); return true; }
+    if(dr.tool === "text"){ drawExitText(); return true; }
+    drawRequestCancel();
+    return true;
+  };
+
   imageInsertGallery.addEventListener("change", function(){
     insertImageFile(imageInsertGallery.files && imageInsertGallery.files[0]);
   });
   imageInsertCamera.addEventListener("change", function(){
-    insertImageFile(imageInsertCamera.files && imageInsertCamera.files[0]);
+    insertImageFile(imageInsertCamera.files && imageInsertCamera.files[0], true);
   });
 
   // ── AUDIO: GRABAR Y REPRODUCIR DENTRO DE LA NOTA ──
@@ -2581,6 +3409,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   // en vez de sacarte de la app.
   window.addEventListener("popstate", function(){
     if(ignoreNextPop){ ignoreNextPop = false; return; }
+    if(drawBackHook && drawBackHook()){ history.pushState({nm:1}, ""); return; }
     if(screenEditor.classList.contains("hidden")) return;
     editorHistoryPushed = false;
     // La entrada ya se consumió: se repone por si hay que quedarse en la nota.
