@@ -333,9 +333,15 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 .draw-tool{position:relative;width:54px;height:54px;border-radius:13px;display:flex;align-items:center;justify-content:center;color:var(--text);}
 .draw-tool.on{background:var(--topbar-dark);}
 .draw-cdot{position:absolute;right:7px;bottom:7px;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.28);}
-#draw-sub{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 22px + 66px + 12px);background:var(--white);border-radius:18px;box-shadow:var(--shadow);padding:16px 18px;display:flex;flex-direction:column;align-items:center;gap:14px;}
+#draw-sub{position:absolute;z-index:4;left:6px;right:6px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);background:var(--white);border-radius:16px;box-shadow:var(--shadow);padding:9px 10px 7px;display:flex;flex-direction:column;align-items:stretch;gap:6px;}
 #draw-sub.hidden{display:none;}
-#draw-colors,#draw-spray-colors,#draw-sizes{display:flex;gap:14px;align-items:center;}
+#draw-colors,#draw-spray-colors{display:flex;justify-content:space-between;align-items:center;padding:0 6px;}
+#draw-spray-colors{justify-content:space-around;}
+#draw-sub .draw-sw{width:28px;height:28px;flex:0 0 28px;}
+#draw-sub .draw-sw.sel{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--brand);}
+#draw-sub-row{display:flex;align-items:center;gap:6px;}
+#draw-sizes{display:flex;gap:4px;align-items:center;justify-content:center;flex:1;}
+#draw-sub .draw-sz{width:46px;height:40px;}
 #draw-wrap canvas#draw-live,#draw-wrap canvas#draw-objs{pointer-events:none;}
 #draw-bar,#draw-sub{z-index:4;}
 #draw-bar.hidden{display:none;}
@@ -344,9 +350,9 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 #draw-text-colors{flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:space-between;padding:0 4px;}
 #draw-textbar .draw-sw{width:22px;height:22px;flex:0 0 22px;}
 #draw-textbar .draw-sw.sel{box-shadow:0 0 0 2px #fff,0 0 0 3.5px var(--brand);}
-#draw-text-bold,#draw-text-alpha{width:34px;height:34px;flex:0 0 34px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--text);}
+#draw-text-bold,#draw-text-alpha,#draw-tool-alpha{width:34px;height:34px;flex:0 0 34px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--text);}
 #draw-text-bold{font-family:'DM Sans',sans-serif;font-weight:600;font-size:19px;line-height:1;}
-#draw-text-bold.on,#draw-text-alpha.on{background:var(--topbar-dark);box-shadow:inset 0 0 0 2px var(--brand);}
+#draw-text-bold.on,#draw-text-alpha.on,#draw-tool-alpha.on{background:var(--topbar-dark);box-shadow:inset 0 0 0 2px var(--brand);}
 #draw-alpha-pop{position:absolute;z-index:5;width:68px;height:250px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px + 46px + 8px);background:var(--white);border-radius:20px;box-shadow:var(--shadow);padding:12px 0 18px;display:flex;flex-direction:column;align-items:center;gap:10px;touch-action:none;}
 #draw-alpha-pop.hidden{display:none;}
 #draw-alpha-val{font-size:15px;font-weight:600;color:var(--text);line-height:1;}
@@ -354,7 +360,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 #draw-alpha-track::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:12px;margin-left:-6px;border-radius:6px;background:rgba(0,0,0,.13);}
 #draw-alpha-fill{position:absolute;left:50%;bottom:0;width:12px;margin-left:-6px;border-radius:6px;background:var(--brand);}
 #draw-alpha-thumb{position:absolute;left:50%;width:36px;height:36px;margin:-18px 0 0 -18px;border-radius:50%;background:#fff;border:3px solid var(--brand);box-shadow:0 2px 6px rgba(0,0,0,.3);box-sizing:border-box;}
-#draw-text-done{width:32px;height:32px;flex:0 0 32px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;}
+#draw-text-done,#draw-tool-done{width:32px;height:32px;flex:0 0 32px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;}
 .tb-sep{width:1px;height:22px;flex:0 0 1px;background:rgba(0,0,0,.14);}
 .tc-row{display:flex;gap:14px;align-items:center;}
 .draw-sz i.glyph{border-radius:0;background:none;font-style:normal;font-weight:700;line-height:1;color:var(--text);}
@@ -870,9 +876,9 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   <textarea id="draw-inline" class="hidden" rows="1" wrap="off" maxlength="300" spellcheck="false" autocomplete="off" autocapitalize="sentences"></textarea>
   <div id="draw-sel" class="hidden"><button id="draw-sel-del" aria-label="Eliminar texto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button><button id="draw-sel-res" aria-label="Cambiar tamaño"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></svg></button></div>
   <div id="draw-sub" class="hidden">
-    <div id="draw-colors"><button class="draw-sw" data-c="#ffffff" aria-label="Blanco" style="background:#ffffff"></button><button class="draw-sw" data-c="#111111" aria-label="Negro" style="background:#111111"></button><button class="draw-sw" data-c="#2658a1" aria-label="Azul notematic" style="background:#2658a1"></button><button class="draw-sw" data-c="#d93a2f" aria-label="Rojo" style="background:#d93a2f"></button><button class="draw-sw" data-c="#2f9e55" aria-label="Verde" style="background:#2f9e55"></button></div>
+    <div id="draw-colors"><button class="draw-sw" data-c="#ffffff" aria-label="Blanco" style="background:#ffffff"></button><button class="draw-sw" data-c="#111111" aria-label="Negro" style="background:#111111"></button><button class="draw-sw" data-c="#f2c230" aria-label="Amarillo" style="background:#f2c230"></button><button class="draw-sw" data-c="#f08a24" aria-label="Naranja" style="background:#f08a24"></button><button class="draw-sw" data-c="#d93a2f" aria-label="Rojo" style="background:#d93a2f"></button><button class="draw-sw" data-c="#7b4bb8" aria-label="Violeta" style="background:#7b4bb8"></button><button class="draw-sw" data-c="#2658a1" aria-label="Azul notematic" style="background:#2658a1"></button><button class="draw-sw" data-c="#2f9e55" aria-label="Verde" style="background:#2f9e55"></button></div>
     <div id="draw-spray-colors"><button class="draw-sw" data-c="#f7a8c4" aria-label="Rosa pastel" style="background:#f7a8c4"></button><button class="draw-sw" data-c="#fbe38a" aria-label="Amarillo pastel" style="background:#fbe38a"></button><button class="draw-sw" data-c="#9ee0b5" aria-label="Menta pastel" style="background:#9ee0b5"></button><button class="draw-sw" data-c="#9cc9f5" aria-label="Azul cielo pastel" style="background:#9cc9f5"></button><button class="draw-sw" data-c="#c7b0f0" aria-label="Lila pastel" style="background:#c7b0f0"></button></div>
-    <div id="draw-sizes"><button class="draw-sz" data-i="0" aria-label="Grosor 1"><i style="width:6px;height:6px"></i></button><button class="draw-sz" data-i="1" aria-label="Grosor 2"><i style="width:11px;height:11px"></i></button><button class="draw-sz" data-i="2" aria-label="Grosor 3"><i style="width:18px;height:18px"></i></button></div>
+    <div id="draw-sub-row"><button id="draw-tool-done" aria-label="Terminar con la herramienta"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></button><i class="tb-sep"></i><div id="draw-sizes"><button class="draw-sz" data-i="0" aria-label="Grosor 1"><i style="width:6px;height:6px"></i></button><button class="draw-sz" data-i="1" aria-label="Grosor 2"><i style="width:11px;height:11px"></i></button><button class="draw-sz" data-i="2" aria-label="Grosor 3"><i style="width:18px;height:18px"></i></button></div><i class="tb-sep" id="draw-sep-alpha"></i><button id="draw-tool-alpha" aria-label="Transparencia"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg></button></div>
   </div>
   <div id="draw-bar">
     <button id="draw-tool-pen" class="draw-tool on" aria-label="Rotulador fino"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><i class="draw-cdot" id="draw-cdot"></i></button>
@@ -1833,7 +1839,6 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   var drawObjs = document.getElementById("draw-objs");
   var DRAW_SIZES = [0.004, 0.008, 0.015];     // rotulador: fracción del lado largo de la foto
   var SPRAY_SIZES = [0.035, 0.065, 0.11];     // spray: fracción del lado largo
-  var SPRAY_ALPHA = 0.5;                      // transparencia del spray
   var ERASE_OLD_THICK = 0.048;                // el antiguo grosor máximo de goma, ahora el más fino
   var ERASE_FINGER_CSS = 46;                  // ≈ huella de un dedo (px de pantalla)
   var DOT_PX = { pen:[6,11,18], spray:[12,20,30], erase:[12,20,32] };
@@ -1842,7 +1847,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
   var drawTmp = document.createElement("canvas");
   var dr = { open:false, target:null, strokes:[], redo:[], hist:[], objs:[], sel:null, tx:null, rs:null, editObj:null, editBefore:null, cur:null, pid:null,
              tool:"pen", color:"#111111", sprayColor:"#f7a8c4", penSize:1, spraySize:1, eraseSize:1,
-             textColor:"#ffffff", textFrac:0.063, textBold:false, textAlpha:1 };   // textFrac: tamaño del texto nuevo (fracción del lado largo)
+             textColor:"#ffffff", textFrac:0.063, textBold:false, textAlpha:1, penAlpha:1, sprayAlpha:0.5 };   // textFrac: tamaño del texto nuevo (fracción del lado largo)
 
   function drawCtx(){ return drawLayer.getContext("2d"); }
   function drawLiveCtx(){ return drawLive.getContext("2d"); }
@@ -1902,8 +1907,8 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     drawFull(t, s);
     ctx.save();
     ctx.globalCompositeOperation = "source-over";
-    ctx.globalAlpha = SPRAY_ALPHA;
-    if(canFilter) ctx.filter = "blur(" + (s.size * 0.14).toFixed(2) + "px)";
+    ctx.globalAlpha = s.alpha;
+    if(canFilter && s.blur) ctx.filter = "blur(" + s.blur.toFixed(2) + "px)";
     ctx.drawImage(drawTmp, 0, 0);
     ctx.restore();
   }
@@ -1911,7 +1916,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     var ctx = drawCtx();
     ctx.globalCompositeOperation = "source-over";
     ctx.clearRect(0, 0, drawLayer.width, drawLayer.height);
-    dr.strokes.forEach(function(s){ if(s.spray) drawSprayCommit(ctx, s); else drawFull(ctx, s); });
+    dr.strokes.forEach(function(s){ if(s.live) drawSprayCommit(ctx, s); else drawFull(ctx, s); });
   }
   function drawLayerPoint(e){
     var r = drawLayer.getBoundingClientRect();
@@ -1967,10 +1972,19 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       drawEnterTextMode(); drawAddPlaceholder();
       return;
     }
-    if(dr.tool === t && !drawSub.classList.contains("hidden")){ drawCloseSub(); return; }
+    if(dr.tool === t) return;
+    // Rotulador, spray o goma: la barra general se sustituye por su barra de ajustes
     dr.tool = t;
     drawEndEdit(); drawDeselect();
-    drawPaintUi(); drawSub.classList.remove("hidden");
+    drawBar.classList.add("hidden"); drawSub.classList.remove("hidden");
+    drawPaintUi(); drawFit();
+  }
+  // ✓ de la barra de herramienta: vuelve la barra general, sin ninguna herramienta activa
+  function drawExitTool(){
+    drawAlphaClose();
+    dr.tool = null;
+    drawSub.classList.add("hidden"); drawBar.classList.remove("hidden");
+    drawPaintUi(); drawFit();
   }
   // ✓ de la barra de texto: termina de escribir y vuelve la barra general de herramientas
   function drawExitText(){
@@ -1986,7 +2000,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     if(!dr.open || !drawPhoto.width) return;
     // Mientras se escribe, la foto se encaja por encima de la ventanita y la barra de herramientas
     var padB = "";
-    if(dr.editObj || dr.tool === "text"){
+    if(dr.editObj || dr.tool){
       var topY = 1e9, sr = drawStage.getBoundingClientRect();
       [drawSub, drawBar, drawTextBar].forEach(function(el){
         if(!el.classList.contains("hidden")){ var r = el.getBoundingClientRect(); if(r.height) topY = Math.min(topY, r.top); }
@@ -2029,7 +2043,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       drawTextBar.classList.add("hidden"); drawBar.classList.remove("hidden");
       drawInline.classList.add("hidden"); drawSel.classList.add("hidden");
       if(document.fonts && document.fonts.load){ document.fonts.load("500 20px 'DM Sans'"); document.fonts.load("600 20px 'DM Sans'"); }
-      dr.textBold = false; dr.textAlpha = 1; dr.textFrac = 0.063; drawAlphaPop.classList.add("hidden");
+      dr.textBold = false; dr.textAlpha = 1; dr.textFrac = 0.063; dr.penAlpha = 1; dr.sprayAlpha = 0.5; drawAlphaPop.classList.add("hidden");
       drawCloseSub(); drawConfirm.classList.add("hidden");
       drawPaintUi(); drawUpdateUndo();
       dr.open = true;
@@ -2105,9 +2119,6 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       var o2 = objAt(drawLayerPoint(e));
       drawEndEdit();
       if(!o2){ drawCloseSub(); return; }       // tocar fuera del texto: termina de escribir
-    } else if(!drawSub.classList.contains("hidden")){
-      var onText = dr.tool === "text" && objAt(drawLayerPoint(e));
-      if(!onText){ drawCloseSub(); return; }    // tocar un texto no cierra la ventanita
     }
     try{ drawLayer.setPointerCapture(e.pointerId); }catch(_){}
     var t = dr.tool;
@@ -2120,13 +2131,17 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
       return;
     }
     if(t === "text"){ drawTextDown(e); return; }
-    var s = { erase: t === "erase", spray: t === "spray", color: t === "spray" ? dr.sprayColor : dr.color,
+    var isSpray = t === "spray";
+    var s = { erase: t === "erase", spray: isSpray, color: isSpray ? dr.sprayColor : dr.color,
               size: drawStrokeWidth(t), pts: [drawLayerPoint(e)] };
+    s.alpha = isSpray ? dr.sprayAlpha : (t === "pen" ? dr.penAlpha : 1);
+    s.blur = isSpray ? s.size * 0.14 : 0;
+    s.live = isSpray || s.alpha < 0.999;       // trazos transparentes: se pintan opacos aparte y se pasan con alfa
     dr.cur = s; dr.pid = e.pointerId;
-    if(s.spray){
+    if(s.live){
       var lc = drawLiveCtx(); lc.clearRect(0, 0, drawLive.width, drawLive.height);
-      drawLive.style.opacity = SPRAY_ALPHA;
-      drawLive.style.filter = canFilter ? "blur(" + (s.size * 0.14 * drawDispScale()).toFixed(2) + "px)" : "";
+      drawLive.style.opacity = s.alpha;
+      drawLive.style.filter = (canFilter && s.blur) ? "blur(" + (s.blur * drawDispScale()).toFixed(2) + "px)" : "";
       drawDot(lc, s);
     } else drawDot(drawCtx(), s);
   });
@@ -2137,7 +2152,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     e.preventDefault();
     var evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
     if(!evs.length) evs = [e];
-    var ctx = s.spray ? drawLiveCtx() : drawCtx();
+    var ctx = s.live ? drawLiveCtx() : drawCtx();
     evs.forEach(function(ev){
       var pt = drawLayerPoint(ev), last = s.pts[s.pts.length - 1];
       if(Math.abs(pt[0] - last[0]) + Math.abs(pt[1] - last[1]) < 1.2) return;
@@ -2149,14 +2164,14 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     var s = dr.cur;
     if(!s || (e && e.pointerId !== dr.pid)) return;
     dr.cur = null;
-    var p = s.pts, ctx = s.spray ? drawLiveCtx() : drawCtx();
+    var p = s.pts, ctx = s.live ? drawLiveCtx() : drawCtx();
     if(p.length > 1){
       var from = s.lastMid || p[0];
       drawSetStyle(ctx, s);
       ctx.beginPath(); ctx.moveTo(from[0], from[1]); ctx.lineTo(p[p.length-1][0], p[p.length-1][1]); ctx.stroke();
     }
     delete s.lastMid;
-    if(s.spray){
+    if(s.live){
       drawSprayCommit(drawCtx(), s);
       ctx.clearRect(0, 0, drawLive.width, drawLive.height);
     }
@@ -2430,28 +2445,42 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     drawPaintUi();
   });
   // Transparencia: deslizador vertical (100 arriba, 0 abajo) que se maneja desde cualquier punto de su columna
+  var drawToolAlphaBtn = document.getElementById("draw-tool-alpha");
+  function drawAlphaNow(){ return dr.tool === "pen" ? dr.penAlpha : (dr.tool === "spray" ? dr.sprayAlpha : dr.textAlpha); }
   function drawAlphaUi(){
-    var v = Math.round((dr.textAlpha == null ? 1 : dr.textAlpha) * 100);
+    var v = Math.round((drawAlphaNow() == null ? 1 : drawAlphaNow()) * 100);
+    var open = !drawAlphaPop.classList.contains("hidden");
     drawAlphaVal.textContent = v;
     drawAlphaFill.style.height = v + "%";
     drawAlphaThumb.style.top = (100 - v) + "%";
-    drawAlphaBtn.classList.toggle("on", !drawAlphaPop.classList.contains("hidden"));
+    drawAlphaBtn.classList.toggle("on", open && dr.tool === "text");
+    drawToolAlphaBtn.classList.toggle("on", open && dr.tool !== "text");
+    var noAlpha = dr.tool === "erase";
+    drawToolAlphaBtn.style.display = noAlpha ? "none" : "";
+    document.getElementById("draw-sep-alpha").style.display = noAlpha ? "none" : "";
   }
   function drawAlphaOpen(){
     drawAlphaPop.classList.remove("hidden");
-    var ov = drawOv.getBoundingClientRect(), br = drawAlphaBtn.getBoundingClientRect();
+    var isText = dr.tool === "text";
+    var ov = drawOv.getBoundingClientRect(), br = (isText ? drawAlphaBtn : drawToolAlphaBtn).getBoundingClientRect();
+    var bar = (isText ? drawTextBar : drawSub).getBoundingClientRect();
     drawAlphaPop.style.left = clampN(br.left + br.width / 2 - 34 - ov.left, 6, ov.width - 68 - 6) + "px";
+    drawAlphaPop.style.bottom = (ov.bottom - bar.top + 8) + "px";
     drawAlphaUi();
   }
   function drawAlphaClose(){ if(!drawAlphaPop.classList.contains("hidden")){ drawAlphaPop.classList.add("hidden"); drawAlphaUi(); } }
-  drawAlphaBtn.addEventListener("click", function(){
-    if(drawAlphaPop.classList.contains("hidden")) drawAlphaOpen(); else drawAlphaClose();
-  });
+  function drawAlphaToggle(){ if(drawAlphaPop.classList.contains("hidden")) drawAlphaOpen(); else drawAlphaClose(); }
+  drawAlphaBtn.addEventListener("click", drawAlphaToggle);
+  drawToolAlphaBtn.addEventListener("click", drawAlphaToggle);
   function drawAlphaFromPointer(e){
     var r = drawAlphaTrack.getBoundingClientRect();
     var v = Math.round(clampN(1 - (e.clientY - r.top) / r.height, 0, 1) * 100) / 100;
-    dr.textAlpha = v;
-    if(dr.sel){ dr.sel.alpha = v; drawObjsRender(); drawSelUpdate(); }
+    if(dr.tool === "pen"){ v = Math.max(v, 0.05); dr.penAlpha = v; }
+    else if(dr.tool === "spray"){ v = Math.max(v, 0.05); dr.sprayAlpha = v; }
+    else {
+      dr.textAlpha = v;
+      if(dr.sel){ dr.sel.alpha = v; drawObjsRender(); drawSelUpdate(); }
+    }
     if(dr.al) dr.al.changed = true;
     drawAlphaUi();
   }
@@ -2469,11 +2498,12 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     var al = dr.al; if(!al || (e && e.pointerId !== al.pid)) return;
     dr.al = null;
     var o = dr.sel;
-    if(al.changed && o && !o.pristine && dr.editObj !== o) drawPushObjs(al.before);
+    if(dr.tool === "text" && al.changed && o && !o.pristine && dr.editObj !== o) drawPushObjs(al.before);
   }
   drawAlphaPop.addEventListener("pointerup", drawAlphaEnd);
   drawAlphaPop.addEventListener("pointercancel", drawAlphaEnd);
   document.getElementById("draw-text-done").addEventListener("click", drawExitText);
+  document.getElementById("draw-tool-done").addEventListener("click", drawExitTool);
   // Tocar la ventanita o los controles mientras se escribe no debe cerrar el teclado
   [drawSub, drawSel, drawTextBar, drawAlphaPop].forEach(function(el){
     el.addEventListener("pointerdown", function(e){ if(dr.editObj) e.preventDefault(); });
@@ -2541,7 +2571,7 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
     if(!dr.open) return false;
     if(dr.editObj){ drawEndEdit(); return true; }
     if(!drawConfirm.classList.contains("hidden")){ drawConfirm.classList.add("hidden"); return true; }
-    if(!drawSub.classList.contains("hidden")){ drawCloseSub(); return true; }
+    if(dr.tool && dr.tool !== "text"){ drawExitTool(); return true; }
     if(dr.tool === "text"){ drawExitText(); return true; }
     drawRequestCancel();
     return true;
