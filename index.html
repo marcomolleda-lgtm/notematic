@@ -4301,5 +4301,12 @@ button{font-family:inherit;border:none;background:none;cursor:pointer;color:inhe
 })();
 </script>
 <div id="toast"><span id="toast-msg"></span><button id="toast-action" class="hidden"></button></div>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  });
+}
+</script>
 </body>
 </html>
